@@ -792,6 +792,56 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cetak Fisik (Canon SELPHY CP1500)
+    |--------------------------------------------------------------------------
+    |
+    | Semua paket dicetak pada satu lembar kertas 4R (100 x 148 mm) beresolusi
+    | 300 DPI. Ukuran kartu dan sisipan gantungan kunci dalam milimeter.
+    |
+    */
+    'print' => [
+        'dpi' => 300,
+        'paper' => ['name' => '4R', 'width_mm' => 100, 'height_mm' => 148],
+        'photocard' => ['width_mm' => 54, 'height_mm' => 86],
+        'keychain' => ['width_mm' => 28, 'height_mm' => 40],
+        'packages' => [
+            'A' => [
+                'name' => 'Hanya Kartu Foto',
+                'price' => 10000,
+                'items' => ['photocard', 'photocard'],
+                'features' => ['2 lembar photocard mini', '2 pose berbeda atau 1 pose rangkap', 'Termasuk soft file QR'],
+            ],
+            'B' => [
+                'name' => 'Paket Bundel Hemat',
+                'price' => 20000,
+                'items' => ['photocard', 'keychain'],
+                'features' => ['1 lembar photocard momen', '1 gantungan kunci akrilik 2 sisi', 'Termasuk soft file QR'],
+            ],
+            'C' => [
+                'name' => 'Hanya Gantungan Kunci Akrilik',
+                'price' => 15000,
+                'items' => ['keychain'],
+                'features' => ['1 gantungan kunci akrilik 2 sisi', 'Termasuk soft file QR'],
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pembayaran
+    |--------------------------------------------------------------------------
+    |
+    | Driver "simulation" menampilkan tombol konfirmasi bayar untuk operator.
+    | Nantinya driver ini diganti dengan integrasi DOKU tanpa mengubah alur kiosk.
+    |
+    */
+    'payment' => [
+        'driver' => env('PHOTOBOOTH_PAYMENT_DRIVER', 'simulation'),
+        'currency' => 'IDR',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Rate Limiting
     |--------------------------------------------------------------------------
     */

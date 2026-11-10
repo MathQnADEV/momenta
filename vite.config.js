@@ -15,6 +15,7 @@ export default defineConfig({
                 'resources/js/photobooth/doodle.js',
                 'resources/js/photobooth/stickers.js',
                 'resources/js/photobooth/upload.js',
+                'resources/js/photobooth/print.js',
                 'resources/js/photobooth/session.js',
                 'resources/css/settings.css',
                 'resources/js/settings/template-editor.js',

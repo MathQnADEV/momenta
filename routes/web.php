@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\PhotoController;
+use App\Http\Controllers\Api\PrintOrderController;
 use App\Http\Controllers\PhotoBoothController;
 use App\Http\Controllers\PublicPhotoController;
 use App\Http\Controllers\Settings\BackgroundSettingsController;
@@ -27,6 +28,13 @@ Route::get('/foto/{slug}', [PublicPhotoController::class, 'show'])->name('photo.
 Route::get('/foto/{slug}/download', [PublicPhotoController::class, 'download'])->name('photo.download');
 
 Route::post('/api/photos', [PhotoController::class, 'store'])->name('api.photos.store');
+
+Route::prefix('api/print-orders')->middleware('throttle:60,1')->group(function () {
+    Route::post('/', [PrintOrderController::class, 'store'])->name('api.print-orders.store');
+    Route::get('/{invoice}', [PrintOrderController::class, 'show'])->name('api.print-orders.show');
+    Route::post('/{invoice}/simulate-payment', [PrintOrderController::class, 'simulatePayment'])
+        ->name('api.print-orders.simulate-payment');
+});
 
 Route::prefix('photobooth/settings')->group(function () {
     Route::get('/login', [SettingsAuthController::class, 'showLogin'])->name('settings.login');

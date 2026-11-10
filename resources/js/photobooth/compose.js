@@ -529,6 +529,92 @@ export async function composePhotoStrip(poses, bgStyle) {
     return canvas;
 }
 
+/**
+ * Satu pose dengan background pengganti dan filter yang sama seperti di hasil
+ * strip, dalam ukuran asli kamera. Dipakai untuk photocard dan ganci.
+ */
+export async function renderProcessedPose(index) {
+    const source = sessionState.poses[index];
+    if (!source) throw new Error(`Foto ${index + 1} belum diambil.`);
+
+    const img = await loadImage(source);
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext("2d");
+
+    const edit = sessionState.photoEdits?.[index] || {};
+    const photoBackground = edit.background || { type: "none" };
+    let photoSource = img;
+
+    if (photoBackground.type === "color" || (photoBackground.type === "image" && photoBackground.url)) {
+        try {
+            if (photoBackground.type === "color") {
+                ctx.fillStyle = photoBackground.value || "#ffffff";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else {
+                drawCoverImage(ctx, await loadImage(photoBackground.url), 0, 0, canvas.width, canvas.height);
+            }
+            photoSource = await removePhotoBackground(source);
+        } catch (error) {
+            console.error("Failed to prepare pose background:", error);
+            photoSource = img;
+        }
+    }
+
+    ctx.filter = resolvePhotoFilter(edit.filter, edit.filterCss);
+    ctx.drawImage(photoSource, 0, 0, canvas.width, canvas.height);
+    ctx.filter = "none";
+
+    return canvas;
+}
+
+/**
+ * Perkiraan posisi wajah (relatif 0–1) dari mask orang hasil segmentasi.
+ * Mengembalikan null bila model tidak tersedia, sehingga pemanggil memakai crop tengah.
+ */
+export async function findPersonFocus(index) {
+    const source = sessionState.poses[index];
+    if (!source) return null;
+
+    try {
+        const foreground = await removePhotoBackground(source);
+        const scale = Math.min(1, 200 / foreground.width);
+        const w = Math.max(1, Math.round(foreground.width * scale));
+        const h = Math.max(1, Math.round(foreground.height * scale));
+        const probe = document.createElement("canvas");
+        probe.width = w;
+        probe.height = h;
+        const probeCtx = probe.getContext("2d", { willReadFrequently: true });
+        probeCtx.drawImage(foreground, 0, 0, w, h);
+        const alpha = probeCtx.getImageData(0, 0, w, h).data;
+
+        let minX = w, minY = h, maxX = -1, maxY = -1;
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                if (alpha[(y * w + x) * 4 + 3] > 96) {
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+        if (maxX < 0) return null;
+
+        const boxH = maxY - minY + 1;
+        return {
+            x: (minX + maxX + 1) / 2 / w,
+            // Wajah berada di bagian atas siluet orang.
+            y: (minY + boxH * 0.3) / h,
+            height: boxH / h,
+        };
+    } catch (error) {
+        console.error("Failed to locate person:", error);
+        return null;
+    }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 

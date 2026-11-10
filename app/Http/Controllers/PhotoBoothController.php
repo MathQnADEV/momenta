@@ -87,6 +87,10 @@ class PhotoBoothController extends Controller
         $stickerAutoThemes = config('photobooth.sticker_auto_themes', []);
         $captureTimers = config('photobooth.capture_timers', [3, 5, 10]);
         $psdUnitId = config('photobooth.default_unit_id');
+        $printConfig = [
+            ...config('photobooth.print', []),
+            'payment_driver' => config('photobooth.payment.driver', 'simulation'),
+        ];
 
         return view('photobooth.session', compact(
             'layouts',
@@ -99,6 +103,7 @@ class PhotoBoothController extends Controller
             'captureTimers',
             'photoBackgrounds',
             'psdUnitId',
+            'printConfig',
         ));
     }
 }

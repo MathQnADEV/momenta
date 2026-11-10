@@ -534,9 +534,72 @@
 
         <p class="qr-expiry-note">Foto dan link tersedia selama 10 menit. Scan dan unduh sekarang.</p>
         <div class="step-actions">
-            <a href="{{ route('photobooth.index') }}" class="btn-primary btn-glow" id="btn-new-session">
+            <button class="btn-primary btn-glow" id="btn-open-print" type="button">
+                Cetak Foto Fisik
+            </button>
+            <a href="{{ route('photobooth.index') }}" class="btn-secondary" id="btn-new-session">
                 Kembali ke Home
             </a>
+        </div>
+    </section>
+
+    {{-- ── STEP 7: Cetak Fisik ─────────────────────────────────────────────── --}}
+    <section class="session-step" id="step-print">
+        <div class="print-panel" data-print-stage="package">
+            <h2 class="step-title">Pilih Format Cetak</h2>
+            <p class="step-desc">Dicetak di kertas foto 4R, siap dipotong dan dibawa pulang</p>
+            <div class="print-package-list" id="print-package-list"></div>
+            <div class="step-actions">
+                <button class="btn-back" id="btn-print-exit" type="button">Kembali ke QR</button>
+            </div>
+        </div>
+
+        <div class="print-panel" data-print-stage="design" hidden>
+            <h2 class="step-title">Atur Cetakan</h2>
+            <p class="step-desc" id="print-design-title"></p>
+            <div class="print-workspace">
+                <div class="print-controls" id="print-controls"></div>
+                <div class="print-preview">
+                    <canvas id="print-sheet-preview" aria-label="Pratinjau lembar 4R"></canvas>
+                    <span class="print-preview-status" id="print-preview-status" hidden>Menyiapkan pratinjau...</span>
+                    <span class="print-preview-caption">Pratinjau kertas 4R · garis sudut = garis potong</span>
+                </div>
+            </div>
+            <div class="step-actions">
+                <button class="btn-primary btn-glow" id="btn-print-to-payment" type="button">Lanjut ke Pembayaran</button>
+                <button class="btn-back" id="btn-print-back-package" type="button">Ganti Paket</button>
+            </div>
+        </div>
+
+        <div class="print-panel" data-print-stage="payment" hidden>
+            <h2 class="step-title">Pembayaran</h2>
+            <p class="step-desc" id="print-package-summary"></p>
+            <div class="print-payment-card">
+                <span class="print-payment-label">Total</span>
+                <strong class="print-payment-amount" id="print-amount"></strong>
+                <span class="print-payment-invoice">No. Invoice <b id="print-invoice"></b></span>
+                <span class="print-payment-status" id="print-payment-status"></span>
+                <p class="print-simulation-note" id="print-simulation-note" hidden>
+                    Mode simulasi: belum terhubung ke DOKU. Operator menekan tombol di bawah setelah menerima pembayaran.
+                </p>
+            </div>
+            <div class="step-actions">
+                <button class="btn-primary btn-glow" id="btn-simulate-payment" type="button" hidden>Konfirmasi Pembayaran (Simulasi)</button>
+                <button class="btn-back" id="btn-payment-back" type="button">Ubah Cetakan</button>
+            </div>
+        </div>
+
+        <div class="print-panel" data-print-stage="done" hidden>
+            <h2 class="step-title">Siap Dicetak! 🖨️</h2>
+            <p class="step-desc">Pilih printer Canon SELPHY CP1500, kertas 4R (100 × 148 mm), skala 100%, tanpa margin.</p>
+            <div class="print-preview print-preview--final">
+                <canvas id="print-final-preview" aria-label="Lembar 4R siap cetak"></canvas>
+            </div>
+            <div class="step-actions">
+                <button class="btn-primary btn-glow" id="btn-print-sheet" type="button">Cetak Sekarang</button>
+                <button class="btn-secondary" id="btn-download-sheet" type="button">Unduh Lembar Cetak</button>
+                <a href="{{ route('photobooth.index') }}" class="btn-back">Selesai — Kembali ke Home</a>
+            </div>
         </div>
     </section>
 </div>
@@ -557,6 +620,9 @@
         apiUploadUrl: '/api/photos',
         homeUrl: @json(route('photobooth.index')),
         retentionMinutes: @json(config('photobooth.retention_minutes', 10)),
+        print: @json($printConfig),
+        printOrdersUrl: '/api/print-orders',
+        logoUrl: @json(asset('logos/LogoNoBg.webp')),
     };
 </script>
 @endsection
@@ -568,6 +634,7 @@
     'resources/js/photobooth/compose.js',
     'resources/js/photobooth/stickers.js',
     'resources/js/photobooth/upload.js',
+    'resources/js/photobooth/print.js',
     'resources/js/photobooth/session.js',
 ])
 @endpush

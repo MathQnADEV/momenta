@@ -28,3 +28,19 @@ testing123
 ```
 
 Password disimpan dalam bentuk hash bcrypt di database.
+
+## Cetak Fisik & Pembayaran
+
+Setelah foto tersimpan, tombol **Cetak Foto Fisik** membuka pilihan paket:
+
+| Paket | Isi | Harga |
+|---|---|---|
+| A | 2 photocard 54 × 86 mm (2 pose berbeda / 1 pose rangkap) | Rp10.000 |
+| B | 1 photocard + gantungan kunci akrilik 2 sisi | Rp20.000 |
+| C | Gantungan kunci akrilik 2 sisi | Rp15.000 |
+
+Semua item dicetak pada satu lembar 4R (100 × 148 mm, 300 DPI) dengan garis potong, untuk Canon SELPHY CP1500. Ukuran, harga, dan isi paket diatur di `config/photobooth.php` bagian `print`.
+
+Pembayaran masih **mode simulasi** (`PHOTOBOOTH_PAYMENT_DRIVER=simulation`): operator menekan tombol konfirmasi setelah menerima uang. Pesanan tersimpan di tabel `print_orders` sehingga nantinya dapat diganti integrasi DOKU.
+
+Saat mencetak pilih printer SELPHY, kertas 4R, skala 100%, tanpa margin. Di Chrome/Edge Windows, dialog print dapat dilewati dengan menjalankan browser memakai opsi `--kiosk-printing`.
