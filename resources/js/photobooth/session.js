@@ -14,6 +14,7 @@ import {
     flattenDrawingToCanvas,
 } from './doodle.js';
 import { uploadPhotoStrip } from './upload.js';
+import { openPrintFlow } from './print.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const stepOrder = ['layout', 'capture', 'style', 'stickers', 'preview'];
@@ -155,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.progress-bar .step').forEach(step => {
             const index = stepOrder.indexOf(step.dataset.step);
             step.classList.toggle('active', index === activeIndex);
-            step.classList.toggle('completed', activeIndex > index || newStep === 'qr');
+            step.classList.toggle('completed', activeIndex > index || newStep === 'qr' || newStep === 'print');
         });
     }
 
@@ -665,5 +666,10 @@ document.addEventListener('DOMContentLoaded', () => {
         goToStep('qr');
         await uploadPhotoStrip();
         saveButton.disabled = false;
+    });
+
+    document.getElementById('btn-open-print')?.addEventListener('click', () => {
+        goToStep('print');
+        openPrintFlow({ onExit: () => goToStep('qr') });
     });
 });
