@@ -59,6 +59,7 @@ class PhotoBoothController extends Controller
                             'h' => $template->canvas_height,
                         ],
                         'photos' => $slots,
+                        'texts' => array_values($template->text_slots ?? []),
                     ];
                 });
         }

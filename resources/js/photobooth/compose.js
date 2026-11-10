@@ -499,6 +499,11 @@ export async function composePhotoStrip(poses, bgStyle) {
         }
     }
 
+    // ── 3b. Teks isian pelanggan di atas gambar template ──────────────────────
+    if (Array.isArray(frameConfig?.texts) && frameConfig.texts.length) {
+        await drawTemplateTexts(ctx, frameConfig.texts, sessionState.textValues || {});
+    }
+
     // ── 4. Watermark / Branding (skip if frame has its own branding) ──────────
     if (!isBackgroundFrame && !isTemplateFrame) {
         const textColor = bg.textColor || "#475569";
@@ -616,6 +621,78 @@ export async function findPersonFocus(index) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Menggambar teks pelanggan pada area teks template. Ukuran huruf mengecil
+ * otomatis sampai seluruh teks (boleh beberapa baris) muat di dalam kotak.
+ */
+async function drawTemplateTexts(ctx, slots, values) {
+    const fonts = window.PHOTOBOOTH_CONFIG?.textFonts || {};
+
+    for (let i = 0; i < slots.length; i++) {
+        const text = String(values[i] ?? "").trim();
+        if (!text) continue;
+
+        const slot = slots[i];
+        const font = fonts[slot.font] || {};
+        const weight = font.weight || 600;
+        const family = `"${font.family || "Outfit"}", ${font.fallback || "sans-serif"}`;
+
+        // Font Google dimuat online; bila gagal, kanvas memakai font cadangan.
+        if (document.fonts?.load && font.family) {
+            try {
+                await document.fonts.load(`${weight} 40px "${font.family}"`);
+            } catch (error) {
+                console.error("Failed to load template font:", error);
+            }
+        }
+
+        let size = Math.max(8, Math.floor(slot.h * 0.85));
+        let lines = [text];
+        while (size > 8) {
+            ctx.font = `${weight} ${size}px ${family}`;
+            lines = wrapTextLines(ctx, text, slot.w);
+            const fitsWidth = lines.every((line) => ctx.measureText(line).width <= slot.w);
+            if (fitsWidth && lines.length * size * 1.15 <= slot.h) break;
+            size -= Math.max(1, Math.round(size * 0.06));
+        }
+
+        const align = ["left", "right"].includes(slot.align) ? slot.align : "center";
+        const lineHeight = size * 1.15;
+        const anchorX = align === "left" ? -slot.w / 2 : align === "right" ? slot.w / 2 : 0;
+        let y = -((lines.length - 1) * lineHeight) / 2;
+
+        ctx.save();
+        ctx.translate(slot.x + slot.w / 2, slot.y + slot.h / 2);
+        ctx.rotate(((Number(slot.rotation) || 0) * Math.PI) / 180);
+        ctx.font = `${weight} ${size}px ${family}`;
+        ctx.fillStyle = slot.color || "#2b2725";
+        ctx.textAlign = align;
+        ctx.textBaseline = "middle";
+        lines.forEach((line) => {
+            ctx.fillText(line, anchorX, y);
+            y += lineHeight;
+        });
+        ctx.restore();
+    }
+}
+
+function wrapTextLines(ctx, text, maxWidth) {
+    const lines = [];
+    let line = "";
+
+    text.split(/\s+/).forEach((word) => {
+        const candidate = line ? `${line} ${word}` : word;
+        if (!line || ctx.measureText(candidate).width <= maxWidth) {
+            line = candidate;
+        } else {
+            lines.push(line);
+            line = word;
+        }
+    });
+    if (line) lines.push(line);
+    return lines;
+}
 
 
 function resolvePhotoFilter(filterId, explicitCss) {

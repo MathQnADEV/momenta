@@ -18,6 +18,7 @@ class PhotoTemplate extends Model
         'grid_columns',
         'grid_rows',
         'photo_slots',
+        'text_slots',
         'is_active',
         'sort_order',
     ];
@@ -26,6 +27,7 @@ class PhotoTemplate extends Model
     {
         return [
             'photo_slots' => 'array',
+            'text_slots' => 'array',
             'is_active' => 'boolean',
             'canvas_width' => 'integer',
             'canvas_height' => 'integer',

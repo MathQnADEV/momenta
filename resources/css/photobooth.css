@@ -4744,3 +4744,58 @@ html.kiosk-stage .app-container {
         font-size: 44px;
     }
 }
+
+/* ==========================================================================
+   AREA TEKS TEMPLATE (mode Teks di halaman Hias)
+   ========================================================================== */
+.decorate-mode-button[hidden] {
+    display: none;
+}
+
+.decorate-mode-toggle--four.has-text-mode {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.text-entry-palette {
+    flex-direction: column;
+    gap: 16px;
+}
+
+.text-entry-fields {
+    display: grid;
+    gap: 14px;
+}
+
+.text-entry-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.text-entry-field input {
+    width: 100%;
+    min-height: 64px;
+    padding: 14px 18px;
+    border: 2px solid rgba(43, 39, 37, 0.14);
+    border-radius: 16px;
+    background: #ffffff;
+    color: var(--text-white);
+    font: inherit;
+    font-size: 22px;
+    font-weight: 500;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.text-entry-field input:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+    .decorate-mode-toggle--four.has-text-mode {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}

@@ -270,6 +270,7 @@
             <button class="decorate-mode-button" type="button" data-decorate-mode="filter">Filter</button>
             <button class="decorate-mode-button" type="button" data-decorate-mode="stickers">Stiker</button>
             <button class="decorate-mode-button" type="button" data-decorate-mode="draw">Coret-coret</button>
+            <button class="decorate-mode-button" type="button" data-decorate-mode="text" id="decorate-text-mode-button" hidden>Teks</button>
         </div>
 
         <div class="sticker-workspace">
@@ -478,6 +479,14 @@
                         <button class="draw-tool-button draw-tool-button--danger" type="button" id="btn-draw-clear">Hapus Coretan</button>
                     </div>
                 </div>
+
+                <div class="text-entry-palette decorate-panel" id="decorate-text-panel" style="display:none;">
+                    <div class="palette-head">
+                        <h3 class="palette-title">Isi Teks</h3>
+                        <span class="palette-subtitle">Teks tampil di posisi yang sudah disiapkan. Kosongkan bila tidak perlu.</span>
+                    </div>
+                    <div class="text-entry-fields" id="text-entry-fields"></div>
+                </div>
             </div>
         </div>
 
@@ -620,6 +629,7 @@
         apiUploadUrl: '/api/photos',
         homeUrl: @json(route('photobooth.index')),
         retentionMinutes: @json(config('photobooth.retention_minutes', 10)),
+        textFonts: @json(config('photobooth.text_fonts', [])),
         print: @json($printConfig),
         printOrdersUrl: '/api/print-orders',
         logoUrl: @json(asset('logos/LogoNoBg.webp')),

@@ -185,6 +185,23 @@ return [
     ],
     'capture_timers' => [3, 5, 10],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Font Area Teks Template
+    |--------------------------------------------------------------------------
+    |
+    | Pilihan font untuk area teks yang diisi pelanggan. Font dimuat online
+    | dari Google Fonts; tanpa internet kiosk memakai font cadangan.
+    |
+    */
+    'text_fonts' => [
+        'handwriting' => ['name' => 'Tulisan Tangan', 'family' => 'Caveat', 'weight' => 600, 'fallback' => 'cursive'],
+        'script' => ['name' => 'Script', 'family' => 'Dancing Script', 'weight' => 700, 'fallback' => 'cursive'],
+        'sans' => ['name' => 'Modern', 'family' => 'Outfit', 'weight' => 700, 'fallback' => 'sans-serif'],
+        'serif' => ['name' => 'Elegan', 'family' => 'Playfair Display', 'weight' => 600, 'fallback' => 'serif'],
+    ],
+    'text_fonts_url' => 'https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Dancing+Script:wght@700&family=Playfair+Display:wght@600&display=swap',
+
 
     /*
     |--------------------------------------------------------------------------
