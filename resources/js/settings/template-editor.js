@@ -58,6 +58,15 @@ function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
 
+// Sudut dari pusat kotak ke pointer (0° = tegak), menempel ke kelipatan 90°.
+function pointerAngle(centerX, centerY, clientX, clientY) {
+    let angle = (Math.atan2(clientY - centerY, clientX - centerX) * 180) / Math.PI + 90;
+    if (angle > 180) angle -= 360;
+    const nearest = Math.round(angle / 90) * 90;
+    if (Math.abs(angle - nearest) <= 4) angle = nearest === -180 ? 180 : nearest;
+    return Math.round(angle * 10) / 10;
+}
+
 function setCanvasSize(width, height, scaleExisting = false) {
     const nextWidth = Math.max(1, Math.round(Number(width) || 1));
     const nextHeight = Math.max(1, Math.round(Number(height) || 1));
@@ -219,7 +228,10 @@ function renderSlots() {
         preview.className = 'template-text-preview';
         preview.textContent = slot.placeholder || slot.label;
         element.append(preview);
-        element.insertAdjacentHTML('beforeend', '<i class="template-slot-resize" aria-hidden="true"></i>');
+        element.insertAdjacentHTML(
+            'beforeend',
+            '<i class="template-slot-resize" aria-hidden="true"></i><i class="template-slot-rotate" aria-hidden="true"></i>',
+        );
         slotLayer.appendChild(element);
     });
 
@@ -441,11 +453,18 @@ slotLayer.addEventListener('pointerdown', event => {
     else selectSlotInPlace(index);
 
     const point = stagePoint(event);
+    const elementRect = slotElement.getBoundingClientRect();
+    let mode = 'move';
+    if (event.target.closest('.template-slot-resize')) mode = 'resize';
+    if (isText && event.target.closest('.template-slot-rotate')) mode = 'rotate';
+
     pointerSession = {
         pointerId: event.pointerId,
         isText,
         index,
-        mode: event.target.closest('.template-slot-resize') ? 'resize' : 'move',
+        mode,
+        centerX: elementRect.left + elementRect.width / 2,
+        centerY: elementRect.top + elementRect.height / 2,
         startX: point.x,
         startY: point.y,
         slot: { ...list[index] },
@@ -462,13 +481,23 @@ slotLayer.addEventListener('pointermove', event => {
     const dx = point.x - pointerSession.startX;
     const dy = point.y - pointerSession.startY;
     const base = pointerSession.slot;
-    const next = pointerSession.mode === 'move'
-        ? { ...base, x: base.x + dx, y: base.y + dy }
-        : { ...base, w: base.w + dx, h: base.h + dy };
+    let next;
+    if (pointerSession.mode === 'rotate') {
+        next = {
+            ...base,
+            rotation: pointerAngle(pointerSession.centerX, pointerSession.centerY, event.clientX, event.clientY),
+        };
+    } else if (pointerSession.mode === 'move') {
+        next = { ...base, x: base.x + dx, y: base.y + dy };
+    } else {
+        next = { ...base, w: base.w + dx, h: base.h + dy };
+    }
 
     if (pointerSession.isText) {
         textSlots[pointerSession.index] = normalizeTextSlot(next);
         applySlotStyle(pointerSession.element, textSlots[pointerSession.index]);
+        applyTextPreviewStyle(pointerSession.element, textSlots[pointerSession.index]);
+        if (textRotationInput) textRotationInput.value = String(textSlots[pointerSession.index].rotation);
     } else {
         slots[pointerSession.index] = normalizeSlot(next);
         applySlotStyle(pointerSession.element, slots[pointerSession.index]);

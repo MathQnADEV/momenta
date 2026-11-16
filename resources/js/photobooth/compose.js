@@ -464,7 +464,7 @@ export async function composePhotoStrip(poses, bgStyle) {
         }
 
         ctx.filter = resolvePhotoFilter(edit.filter, edit.filterCss);
-        drawCoverImage(ctx, photoSource, rect.x, rect.y, rect.w, rect.h);
+        drawAdjustedImage(ctx, photoSource, rect, edit.transform);
         ctx.filter = "none";
         ctx.restore();
 
@@ -629,7 +629,40 @@ export function effectiveTextSlots(slots) {
     return (slots || []).map((slot, index) => ({ ...slot, ...(overrides[index] || {}) }));
 }
 
+/**
+ * Skala foto di dalam slot. Foto selalu menutupi slot ("cover"); saat diputar,
+ * zoom minimum dinaikkan agar sudut slot tidak terlihat kosong.
+ */
+export function effectivePhotoZoom(rect, imageWidth, imageHeight, transform = {}) {
+    const rotation = ((Number(transform.rotation) || 0) * Math.PI) / 180;
+    const base = Math.max(rect.w / imageWidth, rect.h / imageHeight);
+    const w = imageWidth * base;
+    const h = imageHeight * base;
+    const cos = Math.abs(Math.cos(rotation));
+    const sin = Math.abs(Math.sin(rotation));
+    const cover = Math.max((rect.w * cos + rect.h * sin) / w, (rect.w * sin + rect.h * cos) / h);
+
+    return { base, rotation, zoom: Math.max(1, cover, Number(transform.zoom) || 1) };
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function drawAdjustedImage(ctx, img, rect, transform) {
+    const t = transform || {};
+    if (!(Number(t.zoom) > 1) && !Number(t.rotation) && !Number(t.x) && !Number(t.y)) {
+        drawCoverImage(ctx, img, rect.x, rect.y, rect.w, rect.h);
+        return;
+    }
+
+    const { base, rotation, zoom } = effectivePhotoZoom(rect, img.width, img.height, t);
+    const w = img.width * base;
+    const h = img.height * base;
+
+    ctx.translate(rect.x + rect.w / 2 + (Number(t.x) || 0) * rect.w, rect.y + rect.h / 2 + (Number(t.y) || 0) * rect.h);
+    ctx.rotate(rotation);
+    ctx.scale(zoom, zoom);
+    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+}
 
 /**
  * Menggambar teks pelanggan pada area teks template. Ukuran huruf mengecil

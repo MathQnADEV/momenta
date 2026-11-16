@@ -268,6 +268,7 @@
         <div class="decorate-mode-toggle decorate-mode-toggle--four" id="decorate-mode-toggle">
             <button class="decorate-mode-button selected" type="button" data-decorate-mode="background">Background</button>
             <button class="decorate-mode-button" type="button" data-decorate-mode="filter">Filter</button>
+            <button class="decorate-mode-button" type="button" data-decorate-mode="adjust">Atur Foto</button>
             <button class="decorate-mode-button" type="button" data-decorate-mode="stickers">Stiker</button>
             <button class="decorate-mode-button" type="button" data-decorate-mode="draw">Coret-coret</button>
             <button class="decorate-mode-button" type="button" data-decorate-mode="text" id="decorate-text-mode-button" hidden>Teks</button>
@@ -279,6 +280,7 @@
                 <div class="sticker-layer" id="sticker-layer"></div>
                 <canvas id="drawing-canvas" aria-label="Kanvas coret-coret"></canvas>
                 <div class="text-layer" id="text-layer"></div>
+                <div class="photo-adjust-layer" id="photo-adjust-layer"></div>
             </div>
 
             <div class="photo-edit-selector" id="photo-edit-selector">
@@ -479,6 +481,33 @@
                         <button class="draw-tool-button" type="button" id="btn-draw-undo">Urungkan</button>
                         <button class="draw-tool-button draw-tool-button--danger" type="button" id="btn-draw-clear">Hapus Coretan</button>
                     </div>
+                </div>
+
+                <div class="photo-adjust-palette decorate-panel" id="decorate-adjust-panel" style="display:none;">
+                    <div class="palette-head">
+                        <h3 class="palette-title">Atur Foto</h3>
+                        <span class="palette-subtitle">Geser foto langsung di kanvas. Foto tetap berada di dalam bingkainya.</span>
+                    </div>
+
+                    <label class="photo-adjust-control" for="photo-adjust-zoom">
+                        <span>Zoom</span>
+                        <strong id="photo-adjust-zoom-value">100%</strong>
+                        <input id="photo-adjust-zoom" type="range" min="100" max="400" step="1" value="100">
+                    </label>
+
+                    <label class="photo-adjust-control" for="photo-adjust-rotation">
+                        <span>Putar</span>
+                        <strong id="photo-adjust-rotation-value">0°</strong>
+                        <input id="photo-adjust-rotation" type="range" min="-180" max="180" step="1" value="0">
+                    </label>
+
+                    <div class="photo-adjust-buttons">
+                        <button class="draw-tool-button" type="button" id="btn-photo-rotate-left">Putar −90°</button>
+                        <button class="draw-tool-button" type="button" id="btn-photo-rotate-right">Putar +90°</button>
+                        <button class="draw-tool-button" type="button" id="btn-photo-adjust-reset">Reset</button>
+                    </div>
+
+                    <p class="photo-adjust-hint">Di tablet: cubit dua jari untuk zoom dan memutar. Di laptop: scroll mouse untuk zoom, tarik bulatan di atas kotak untuk memutar.</p>
                 </div>
 
                 <div class="text-entry-palette decorate-panel" id="decorate-text-panel" style="display:none;">
