@@ -4899,3 +4899,154 @@ html.kiosk-stage .app-container {
     font-weight: 700;
     cursor: pointer;
 }
+
+/* Bulatan putar di atas kotak teks (tarik memutar untuk 360°). */
+.text-box-rotate {
+    position: absolute;
+    left: 50%;
+    top: -64px;
+    width: 40px;
+    height: 40px;
+    margin-left: -20px;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 3px 8px rgba(43, 39, 37, 0.25);
+    cursor: grab;
+    touch-action: none;
+}
+
+.text-box-rotate::before {
+    content: "";
+    position: absolute;
+    inset: 9px;
+    border: 3px solid #ffffff;
+    border-right-color: transparent;
+    border-radius: 50%;
+}
+
+.text-box-rotate::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 2px;
+    height: 24px;
+    margin-left: -1px;
+    background: var(--primary);
+}
+
+.text-box .text-box-tag {
+    left: auto;
+    right: -2px;
+}
+
+/* ==========================================================================
+   ATUR FOTO (geser, zoom, putar foto di dalam slot)
+   ========================================================================== */
+.decorate-mode-toggle--four,
+.decorate-mode-toggle--four.has-text-mode {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+}
+
+.photo-adjust-layer {
+    position: absolute;
+    z-index: 6;
+    display: none;
+    pointer-events: none;
+}
+
+.photo-adjust-layer.is-active {
+    display: block;
+}
+
+.photo-adjust-box {
+    position: absolute;
+    border: 3px dashed rgba(255, 255, 255, 0.95);
+    outline: 2px solid rgba(43, 39, 37, 0.55);
+    cursor: grab;
+    pointer-events: auto;
+    touch-action: none;
+}
+
+.photo-adjust-box:active {
+    cursor: grabbing;
+}
+
+.photo-adjust-tag {
+    position: absolute;
+    left: 8px;
+    top: 8px;
+    padding: 3px 10px;
+    border-radius: 8px;
+    background: rgba(43, 39, 37, 0.8);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    pointer-events: none;
+}
+
+.photo-adjust-rotate {
+    position: absolute;
+    left: 50%;
+    top: 16px;
+    width: 44px;
+    height: 44px;
+    margin-left: -22px;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 3px 8px rgba(43, 39, 37, 0.3);
+    cursor: grab;
+    touch-action: none;
+}
+
+.photo-adjust-rotate::before {
+    content: "";
+    position: absolute;
+    inset: 10px;
+    border: 3px solid #ffffff;
+    border-right-color: transparent;
+    border-radius: 50%;
+}
+
+.photo-adjust-palette {
+    flex-direction: column;
+    gap: 18px;
+}
+
+.photo-adjust-control {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.photo-adjust-control input {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: var(--primary);
+}
+
+.photo-adjust-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.photo-adjust-hint {
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+    .decorate-mode-toggle--four,
+    .decorate-mode-toggle--four.has-text-mode {
+        grid-auto-flow: row;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}

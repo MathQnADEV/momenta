@@ -9,6 +9,19 @@ import { effectiveTextSlots } from './compose.js';
 
 const MIN_WIDTH = 40;
 const MIN_HEIGHT = 20;
+const SNAP_DEGREES = 4;
+
+/**
+ * Sudut dari pusat kotak ke pointer, 0° = tegak. Menempel ke kelipatan 90°
+ * bila cukup dekat agar teks mudah diluruskan kembali.
+ */
+export function pointerAngle(centerX, centerY, clientX, clientY) {
+    let angle = (Math.atan2(clientY - centerY, clientX - centerX) * 180) / Math.PI + 90;
+    if (angle > 180) angle -= 360;
+    const nearest = Math.round(angle / 90) * 90;
+    if (Math.abs(angle - nearest) <= SNAP_DEGREES) angle = nearest === -180 ? 180 : nearest;
+    return Math.round(angle * 10) / 10;
+}
 
 const layer = document.getElementById('text-layer');
 const wrapper = document.getElementById('canvas-wrapper');
@@ -69,7 +82,11 @@ export function renderTextBoxes() {
         handle.className = 'text-box-resize';
         handle.setAttribute('aria-hidden', 'true');
 
-        box.append(tag, handle);
+        const rotate = document.createElement('i');
+        rotate.className = 'text-box-rotate';
+        rotate.setAttribute('aria-hidden', 'true');
+
+        box.append(tag, handle, rotate);
         layer.append(box);
     });
 }
@@ -100,11 +117,18 @@ export function initTextLayer(options = {}) {
         const slot = effectiveTextSlots(templateTextSlots())[index];
         if (!slot) return;
 
+        const boxRect = box.getBoundingClientRect();
+        let mode = 'move';
+        if (event.target.closest('.text-box-resize')) mode = 'resize';
+        if (event.target.closest('.text-box-rotate')) mode = 'rotate';
+
         pointerSession = {
             pointerId: event.pointerId,
             index,
             box,
-            mode: event.target.closest('.text-box-resize') ? 'resize' : 'move',
+            mode,
+            centerX: boxRect.left + boxRect.width / 2,
+            centerY: boxRect.top + boxRect.height / 2,
             startX: event.clientX,
             startY: event.clientY,
             slot,
@@ -127,7 +151,11 @@ export function initTextLayer(options = {}) {
         const dy = (event.clientY - pointerSession.startY) * ratio;
         let next;
 
-        if (pointerSession.mode === 'move') {
+        if (pointerSession.mode === 'rotate') {
+            next = {
+                rotation: pointerAngle(pointerSession.centerX, pointerSession.centerY, event.clientX, event.clientY),
+            };
+        } else if (pointerSession.mode === 'move') {
             next = {
                 x: Math.round(Math.max(0, Math.min(canvasW - slot.w, slot.x + dx))),
                 y: Math.round(Math.max(0, Math.min(canvasH - slot.h, slot.y + dy))),

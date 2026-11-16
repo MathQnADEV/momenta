@@ -16,6 +16,14 @@ import {
 import { uploadPhotoStrip } from './upload.js';
 import { openPrintFlow } from './print.js';
 import { initTextLayer, renderTextBoxes, resetTextPositions, setTextLayerEnabled } from './text-layer.js';
+import {
+    initPhotoAdjust,
+    renderPhotoAdjust,
+    resetSelectedTransform,
+    selectedTransform,
+    setPhotoAdjustEnabled,
+    updateSelectedTransform,
+} from './photo-adjust.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const stepOrder = ['layout', 'capture', 'style', 'stickers', 'preview'];
@@ -32,6 +40,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const textPanel = document.getElementById('decorate-text-panel');
     const textModeButton = document.getElementById('decorate-text-mode-button');
     const textEntryFields = document.getElementById('text-entry-fields');
+    const adjustPanel = document.getElementById('decorate-adjust-panel');
+    const adjustZoomInput = document.getElementById('photo-adjust-zoom');
+    const adjustRotationInput = document.getElementById('photo-adjust-rotation');
+    const adjustZoomValue = document.getElementById('photo-adjust-zoom-value');
+    const adjustRotationValue = document.getElementById('photo-adjust-rotation-value');
     const photoEditSelector = document.getElementById('photo-edit-selector');
     const photoEditTargetGrid = document.getElementById('photo-edit-target-grid');
     const selectedPhotoEditLabel = document.getElementById('selected-photo-edit-label');
@@ -49,6 +62,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let backgroundStatusTimer = null;
 
     initTextLayer({ onChange: () => scheduleDecorationRefresh() });
+    initPhotoAdjust({
+        onChange: () => scheduleDecorationRefresh(),
+        onSync: transform => syncAdjustControls(transform),
+    });
+
+    adjustZoomInput?.addEventListener('input', () => {
+        updateSelectedTransform({ zoom: Number(adjustZoomInput.value) / 100 });
+    });
+    adjustRotationInput?.addEventListener('input', () => {
+        updateSelectedTransform({ rotation: Number(adjustRotationInput.value) });
+    });
+    document.getElementById('btn-photo-rotate-left')?.addEventListener('click', () => {
+        updateSelectedTransform({ rotation: (selectedTransform()?.rotation || 0) - 90 });
+    });
+    document.getElementById('btn-photo-rotate-right')?.addEventListener('click', () => {
+        updateSelectedTransform({ rotation: (selectedTransform()?.rotation || 0) + 90 });
+    });
+    document.getElementById('btn-photo-adjust-reset')?.addEventListener('click', resetSelectedTransform);
 
     function makePhotoEdit() {
         return {
@@ -170,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mode = sessionState.decorateMode || 'background';
         const drawMode = mode === 'draw';
         const stickerMode = mode === 'stickers';
-        const photoEditMode = mode === 'background' || mode === 'filter';
+        const photoEditMode = mode === 'background' || mode === 'filter' || mode === 'adjust';
 
         document.querySelectorAll('[data-decorate-mode]').forEach(button => {
             button.classList.toggle('selected', button.dataset.decorateMode === mode);
@@ -181,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (stickerPanel) stickerPanel.style.display = stickerMode ? 'flex' : 'none';
         if (drawPanel) drawPanel.style.display = drawMode ? 'flex' : 'none';
         if (textPanel) textPanel.style.display = mode === 'text' ? 'flex' : 'none';
+        if (adjustPanel) adjustPanel.style.display = mode === 'adjust' ? 'flex' : 'none';
         if (photoEditSelector) photoEditSelector.style.display = photoEditMode ? 'flex' : 'none';
         stickerWorkspace?.classList.toggle('has-photo-selector', photoEditMode);
         if (clearStickersButton) clearStickersButton.style.display = stickerMode ? 'grid' : 'none';
@@ -188,6 +220,18 @@ document.addEventListener('DOMContentLoaded', () => {
         stickerLayer?.classList.toggle('decorating-disabled', !stickerMode);
         setDrawingEnabled(drawMode);
         setTextLayerEnabled(mode === 'text');
+        setPhotoAdjustEnabled(mode === 'adjust');
+        syncAdjustControls();
+    }
+
+    function syncAdjustControls(transform = selectedTransform()) {
+        if (!transform) return;
+        const zoom = Math.round((Number(transform.zoom) || 1) * 100);
+        const rotation = Math.round(Number(transform.rotation) || 0);
+        if (adjustZoomInput) adjustZoomInput.value = String(zoom);
+        if (adjustRotationInput) adjustRotationInput.value = String(rotation);
+        if (adjustZoomValue) adjustZoomValue.textContent = `${zoom}%`;
+        if (adjustRotationValue) adjustRotationValue.textContent = `${rotation}°`;
     }
 
     function setBackgroundSourceTab(tab) {
@@ -284,7 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const hint = document.createElement('p');
         hint.className = 'text-entry-hint';
-        hint.textContent = 'Geser kotak teks di foto untuk memindahkan. Tarik bulatan di sudut untuk mengubah ukuran.';
+        hint.textContent = 'Geser kotak teks di foto untuk memindahkan. Tarik bulatan di sudut untuk mengubah ukuran, dan bulatan di atas kotak untuk memutar.';
 
         const reset = document.createElement('button');
         reset.type = 'button';
@@ -358,6 +402,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setBackgroundSourceTab(
             background.type === 'image' ? 'photo' : background.type === 'color' ? 'color' : 'none',
         );
+
+        // Kotak atur foto dan slider mengikuti foto yang sedang dipilih.
+        syncAdjustControls();
+        renderPhotoAdjust();
     }
 
     function renderPhotoEditTargets() {

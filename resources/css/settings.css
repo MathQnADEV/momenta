@@ -896,3 +896,29 @@ a {
     background: #fff;
     font: inherit;
 }
+
+.template-slot-rotate {
+    position: absolute;
+    left: 50%;
+    top: -38px;
+    width: 24px;
+    height: 24px;
+    margin-left: -12px;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: #2563eb;
+    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.24);
+    cursor: grab;
+    touch-action: none;
+}
+
+.template-slot-rotate::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 2px;
+    height: 12px;
+    margin-left: -1px;
+    background: #2563eb;
+}
