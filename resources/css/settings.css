@@ -830,3 +830,69 @@ a {
         min-height: 240px;
     }
 }
+
+/* Area teks template: diisi pelanggan di kiosk, posisinya diatur admin. */
+.template-text-slot {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    min-width: 8px;
+    min-height: 8px;
+    padding: 0 4px;
+    overflow: visible;
+    container-type: size;
+    border: 2px dashed rgba(37, 99, 235, 0.9);
+    background: rgba(37, 99, 235, 0.12);
+    cursor: move;
+    touch-action: none;
+    transform-origin: center;
+}
+
+.template-text-slot.is-selected {
+    z-index: 3;
+    border-style: solid;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8);
+}
+
+.template-text-slot .template-slot-resize {
+    background: #2563eb;
+}
+
+.template-text-preview {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    font-size: 62cqh;
+    line-height: 1.1;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+.text-slot-fields {
+    display: grid;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(43, 39, 37, 0.1);
+}
+
+.text-slot-fields[hidden] {
+    display: none;
+}
+
+.text-slot-fields-title {
+    margin: 0;
+    font-weight: 800;
+}
+
+.text-slot-fields select,
+.text-slot-fields input[type="color"] {
+    width: 100%;
+    min-height: 48px;
+    padding: 6px 10px;
+    border: 1px solid #d8dee9;
+    border-radius: 14px;
+    background: #fff;
+    font: inherit;
+}

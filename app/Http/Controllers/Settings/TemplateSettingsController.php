@@ -33,6 +33,7 @@ class TemplateSettingsController extends Controller
             'gridColumns' => $template->grid_columns,
             'gridRows' => $template->grid_rows,
             'slots' => $template->photo_slots,
+            'textSlots' => $template->text_slots ?? [],
             'isActive' => $template->is_active,
             'sortOrder' => $template->sort_order,
             'updateUrl' => route('settings.templates.update', $template),
@@ -62,7 +63,7 @@ class TemplateSettingsController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        [$validated, $slots] = $this->validatePayload($request, true);
+        [$validated, $slots, $textSlots] = $this->validatePayload($request, true);
         $image = $request->file('template_image');
         [$imagePath, $canvasWidth, $canvasHeight] = $this->storeImage($image);
 
@@ -77,6 +78,7 @@ class TemplateSettingsController extends Controller
             'grid_columns' => $validated['grid_columns'],
             'grid_rows' => $validated['grid_rows'],
             'photo_slots' => $this->normalizeSlotsForCanvas($slots, $validated, $canvasWidth, $canvasHeight),
+            'text_slots' => $this->normalizeTextSlotsForCanvas($textSlots, $validated, $canvasWidth, $canvasHeight),
             'is_active' => $request->boolean('is_active'),
             'sort_order' => $validated['sort_order'],
         ]);
@@ -88,7 +90,7 @@ class TemplateSettingsController extends Controller
 
     public function update(Request $request, PhotoTemplate $template): RedirectResponse
     {
-        [$validated, $slots] = $this->validatePayload($request, false);
+        [$validated, $slots, $textSlots] = $this->validatePayload($request, false);
 
         $imagePath = $template->image_path;
         $imageSource = $template->image_source;
@@ -114,6 +116,7 @@ class TemplateSettingsController extends Controller
             'grid_columns' => $validated['grid_columns'],
             'grid_rows' => $validated['grid_rows'],
             'photo_slots' => $this->normalizeSlotsForCanvas($slots, $validated, $canvasWidth, $canvasHeight),
+            'text_slots' => $this->normalizeTextSlotsForCanvas($textSlots, $validated, $canvasWidth, $canvasHeight),
             'is_active' => $request->boolean('is_active'),
             'sort_order' => $validated['sort_order'],
         ]);
@@ -150,6 +153,7 @@ class TemplateSettingsController extends Controller
             'editor_canvas_width' => ['required', 'integer', 'min:1', 'max:10000'],
             'editor_canvas_height' => ['required', 'integer', 'min:1', 'max:10000'],
             'photo_slots' => ['required', 'string'],
+            'text_slots' => ['nullable', 'string'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:9999'],
             'is_active' => ['nullable', 'boolean'],
         ]);
@@ -177,7 +181,25 @@ class TemplateSettingsController extends Controller
             }
         }
 
-        return [$validated, $slots];
+        $textSlots = json_decode($validated['text_slots'] ?? '[]', true);
+        if (! is_array($textSlots) || count($textSlots) > 12) {
+            throw ValidationException::withMessages([
+                'text_slots' => 'Jumlah area teks maksimum 12.',
+            ]);
+        }
+
+        foreach ($textSlots as $index => $slot) {
+            $geometryValid = is_array($slot) && collect(['x', 'y', 'w', 'h'])
+                ->every(fn (string $key): bool => isset($slot[$key]) && is_numeric($slot[$key]));
+
+            if (! $geometryValid || (float) $slot['w'] <= 0 || (float) $slot['h'] <= 0) {
+                throw ValidationException::withMessages([
+                    'text_slots' => 'Data area teks ke-'.($index + 1).' tidak valid.',
+                ]);
+            }
+        }
+
+        return [$validated, $slots, $textSlots];
     }
 
     private function normalizeSlotsForCanvas(
@@ -199,6 +221,35 @@ class TemplateSettingsController extends Controller
 
             return compact('x', 'y', 'w', 'h');
         }, $slots);
+    }
+
+    /**
+     * Area teks memakai skala yang sama dengan area foto, ditambah gaya teks
+     * yang dibersihkan agar hanya berisi nilai yang dikenal kiosk.
+     */
+    private function normalizeTextSlotsForCanvas(
+        array $textSlots,
+        array $validated,
+        int $targetWidth,
+        int $targetHeight,
+    ): array {
+        $geometry = $this->normalizeSlotsForCanvas($textSlots, $validated, $targetWidth, $targetHeight);
+        $fonts = array_keys(config('photobooth.text_fonts', []));
+
+        return array_values(array_map(function (array $slot, array $box) use ($fonts): array {
+            $color = (string) ($slot['color'] ?? '');
+
+            return [
+                ...$box,
+                'label' => Str::limit(trim((string) ($slot['label'] ?? '')), 40, '') ?: 'Teks',
+                'placeholder' => Str::limit(trim((string) ($slot['placeholder'] ?? '')), 80, ''),
+                'max_length' => max(1, min(120, (int) ($slot['max_length'] ?? 30))),
+                'font' => in_array($slot['font'] ?? null, $fonts, true) ? $slot['font'] : ($fonts[0] ?? 'sans'),
+                'color' => preg_match('/^#[0-9a-fA-F]{6}$/', $color) ? strtolower($color) : '#2b2725',
+                'align' => in_array($slot['align'] ?? null, ['left', 'center', 'right'], true) ? $slot['align'] : 'center',
+                'rotation' => max(-180, min(180, round((float) ($slot['rotation'] ?? 0), 1))),
+            ];
+        }, $textSlots, $geometry));
     }
 
     private function storeImage(UploadedFile $image): array

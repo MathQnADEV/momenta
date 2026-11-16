@@ -14,6 +14,8 @@ export const sessionState = {
     compositeCanvas: null,
     stickers: [],
     drawStrokes: [],
+    textValues: {},
+    textOverrides: {},
     uploadStatus: 'idle',
     photoSlug: null,
     downloadUrl: null,
@@ -35,6 +37,8 @@ export const sessionState = {
         this.compositeCanvas = null;
         this.stickers = [];
         this.drawStrokes = [];
+        this.textValues = {};
+        this.textOverrides = {};
         this.uploadStatus = 'idle';
         this.photoSlug = null;
         this.downloadUrl = null;

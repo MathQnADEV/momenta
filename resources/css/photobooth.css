@@ -4744,3 +4744,158 @@ html.kiosk-stage .app-container {
         font-size: 44px;
     }
 }
+
+/* ==========================================================================
+   AREA TEKS TEMPLATE (mode Teks di halaman Hias)
+   ========================================================================== */
+.decorate-mode-button[hidden] {
+    display: none;
+}
+
+.decorate-mode-toggle--four.has-text-mode {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.text-entry-palette {
+    flex-direction: column;
+    gap: 16px;
+}
+
+.text-entry-fields {
+    display: grid;
+    gap: 14px;
+}
+
+.text-entry-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.text-entry-field input {
+    width: 100%;
+    min-height: 64px;
+    padding: 14px 18px;
+    border: 2px solid rgba(43, 39, 37, 0.14);
+    border-radius: 16px;
+    background: #ffffff;
+    color: var(--text-white);
+    font: inherit;
+    font-size: 22px;
+    font-weight: 500;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.text-entry-field input:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+    .decorate-mode-toggle--four.has-text-mode {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* Kotak teks yang bisa digeser pelanggan di atas kanvas hias. */
+.text-layer {
+    position: absolute;
+    z-index: 6;
+    display: none;
+    pointer-events: none;
+}
+
+.text-layer.is-active {
+    display: block;
+}
+
+.text-box {
+    position: absolute;
+    border: 2px dashed rgba(185, 99, 108, 0.95);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+    cursor: move;
+    pointer-events: auto;
+    touch-action: none;
+    transform-origin: center;
+}
+
+.text-box.is-empty {
+    background: rgba(185, 99, 108, 0.12);
+}
+
+.text-box.is-dragging {
+    border-style: solid;
+}
+
+.text-box-tag {
+    position: absolute;
+    left: -2px;
+    bottom: calc(100% + 4px);
+    padding: 3px 10px;
+    border-radius: 8px;
+    background: var(--primary);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.text-box-resize {
+    position: absolute;
+    right: -22px;
+    bottom: -22px;
+    width: 44px;
+    height: 44px;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    background: var(--secondary);
+    box-shadow: 0 3px 8px rgba(43, 39, 37, 0.25);
+    cursor: nwse-resize;
+    touch-action: none;
+}
+
+.text-font-chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.text-font-chip {
+    min-height: 56px;
+    padding: 6px 10px;
+    border: 2px solid rgba(43, 39, 37, 0.12);
+    border-radius: 14px;
+    background: #ffffff;
+    color: var(--text-white);
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.text-font-chip.selected {
+    border-color: var(--primary);
+    background: #fdf3f0;
+}
+
+.text-entry-hint {
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+.text-entry-reset {
+    min-height: 52px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--bg-dark);
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}

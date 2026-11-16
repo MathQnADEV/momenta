@@ -111,6 +111,7 @@
                     @csrf
                     <input type="hidden" name="_method" id="template-method" value="POST">
                     <input type="hidden" name="photo_slots" id="photo-slots-input" value="[]">
+                    <input type="hidden" name="text_slots" id="text-slots-input" value="[]">
                     <input type="hidden" name="editor_canvas_width" id="editor-canvas-width" value="1200">
                     <input type="hidden" name="editor_canvas_height" id="editor-canvas-height" value="1800">
 
@@ -157,13 +158,14 @@
                         </label>
                         <button class="settings-secondary-button settings-secondary-button--compact" id="btn-generate-grid" type="button">Buat Grid</button>
                         <button class="settings-secondary-button settings-secondary-button--compact" id="btn-add-slot" type="button">Tambah Area</button>
+                        <button class="settings-secondary-button settings-secondary-button--compact" id="btn-add-text-slot" type="button">Tambah Area Teks</button>
                     </div>
 
                     <div class="editor-stage-layout">
                         <div class="template-stage-column">
                             <div class="template-stage-toolbar">
                                 <span id="canvas-dimension-label">Canvas 1200 × 1800 px</span>
-                                <span><strong id="slot-count-label">0</strong> area foto</span>
+                                <span><strong id="slot-count-label">0</strong> area foto · <strong id="text-slot-count-label">0</strong> area teks</span>
                             </div>
                             <div class="template-stage-shell">
                                 <div class="template-stage" id="template-stage" style="aspect-ratio: 1200 / 1800;">
@@ -188,6 +190,33 @@
                                 <label class="settings-field settings-field--small"><span>Tinggi</span><input type="number" id="slot-h" min="1" step="1" disabled></label>
                             </div>
                             <p class="slot-inspector-help">Sentuh bagian tengah kotak untuk menggeser. Sentuh sudut kanan bawah untuk mengubah ukuran.</p>
+
+                            <div class="text-slot-fields" id="text-slot-fields" hidden>
+                                <p class="text-slot-fields-title">Gaya Teks</p>
+                                <label class="settings-field settings-field--small"><span>Label untuk pelanggan</span><input type="text" id="text-slot-label" maxlength="40" placeholder="Contoh: Nama"></label>
+                                <label class="settings-field settings-field--small"><span>Teks contoh</span><input type="text" id="text-slot-placeholder" maxlength="80" placeholder="Contoh: Nama Ta'"></label>
+                                <div class="slot-coordinate-grid">
+                                    <label class="settings-field settings-field--small"><span>Font</span>
+                                        <select id="text-slot-font">
+                                            @foreach (config('photobooth.text_fonts', []) as $fontKey => $font)
+                                                <option value="{{ $fontKey }}">{{ $font['name'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    </label>
+                                    <label class="settings-field settings-field--small"><span>Warna</span><input type="color" id="text-slot-color" value="#2b2725"></label>
+                                    <label class="settings-field settings-field--small"><span>Rata</span>
+                                        <select id="text-slot-align">
+                                            <option value="left">Kiri</option>
+                                            <option value="center">Tengah</option>
+                                            <option value="right">Kanan</option>
+                                        </select>
+                                    </label>
+                                    <label class="settings-field settings-field--small"><span>Miring (°)</span><input type="number" id="text-slot-rotation" min="-180" max="180" step="0.5" value="0"></label>
+                                    <label class="settings-field settings-field--small"><span>Maks. huruf</span><input type="number" id="text-slot-max-length" min="1" max="120" step="1" value="30"></label>
+                                </div>
+                                <p class="slot-inspector-help">Ukuran huruf otomatis menyesuaikan kotak. Pelanggan mengisi teks ini di halaman Hias.</p>
+                            </div>
+
                             <button class="settings-danger-button" id="btn-remove-slot" type="button" disabled>Hapus Area Terpilih</button>
                         </aside>
                     </div>
@@ -312,6 +341,7 @@ window.PHOTOBOOTH_SETTINGS = {
     csrfTokenUrl: @json(route('settings.csrf-token', absolute: false)),
     storeUrl: @json(route('settings.templates.store')),
     templates: @json($settingsTemplates),
+    textFonts: @json(config('photobooth.text_fonts', [])),
     backgroundStoreUrl: @json(route('settings.backgrounds.store')),
     backgrounds: @json($settingsBackgrounds),
 };

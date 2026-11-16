@@ -15,6 +15,7 @@ import {
 } from './doodle.js';
 import { uploadPhotoStrip } from './upload.js';
 import { openPrintFlow } from './print.js';
+import { initTextLayer, renderTextBoxes, resetTextPositions, setTextLayerEnabled } from './text-layer.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const stepOrder = ['layout', 'capture', 'style', 'stickers', 'preview'];
@@ -28,6 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterPanel = document.getElementById('decorate-filter-panel');
     const stickerPanel = document.getElementById('decorate-sticker-panel');
     const drawPanel = document.getElementById('decorate-draw-panel');
+    const textPanel = document.getElementById('decorate-text-panel');
+    const textModeButton = document.getElementById('decorate-text-mode-button');
+    const textEntryFields = document.getElementById('text-entry-fields');
     const photoEditSelector = document.getElementById('photo-edit-selector');
     const photoEditTargetGrid = document.getElementById('photo-edit-target-grid');
     const selectedPhotoEditLabel = document.getElementById('selected-photo-edit-label');
@@ -43,6 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let backgroundSourceTab = 'none';
     let backgroundRefreshToken = 0;
     let backgroundStatusTimer = null;
+
+    initTextLayer({ onChange: () => scheduleDecorationRefresh() });
 
     function makePhotoEdit() {
         return {
@@ -174,12 +180,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filterPanel) filterPanel.style.display = mode === 'filter' ? 'flex' : 'none';
         if (stickerPanel) stickerPanel.style.display = stickerMode ? 'flex' : 'none';
         if (drawPanel) drawPanel.style.display = drawMode ? 'flex' : 'none';
+        if (textPanel) textPanel.style.display = mode === 'text' ? 'flex' : 'none';
         if (photoEditSelector) photoEditSelector.style.display = photoEditMode ? 'flex' : 'none';
         stickerWorkspace?.classList.toggle('has-photo-selector', photoEditMode);
         if (clearStickersButton) clearStickersButton.style.display = stickerMode ? 'grid' : 'none';
 
         stickerLayer?.classList.toggle('decorating-disabled', !stickerMode);
         setDrawingEnabled(drawMode);
+        setTextLayerEnabled(mode === 'text');
     }
 
     function setBackgroundSourceTab(tab) {
@@ -210,6 +218,84 @@ document.addEventListener('DOMContentLoaded', () => {
                 backgroundProcessingStatus.hidden = true;
             }, 1800);
         }
+    }
+
+    function templateTextSlots() {
+        const frame = window.PHOTOBOOTH_CONFIG.frames?.[sessionState.frameId];
+        return Array.isArray(frame?.texts) ? frame.texts : [];
+    }
+
+    function renderTextEntryFields() {
+        const textSlots = templateTextSlots();
+        const hasText = textSlots.length > 0;
+
+        if (textModeButton) textModeButton.hidden = !hasText;
+        document.getElementById('decorate-mode-toggle')?.classList.toggle('has-text-mode', hasText);
+        if (!hasText && sessionState.decorateMode === 'text') sessionState.decorateMode = 'background';
+        if (!textEntryFields) return;
+
+        const fonts = window.PHOTOBOOTH_CONFIG.textFonts || {};
+        textEntryFields.replaceChildren();
+        textSlots.forEach((slot, index) => {
+            const group = document.createElement('div');
+            group.className = 'text-entry-field';
+
+            const caption = document.createElement('label');
+            caption.textContent = slot.label || `Teks ${index + 1}`;
+            caption.htmlFor = `text-entry-${index}`;
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = `text-entry-${index}`;
+            input.maxLength = Number(slot.max_length) || 30;
+            input.placeholder = slot.placeholder || '';
+            input.value = sessionState.textValues[index] || '';
+            input.addEventListener('input', () => {
+                sessionState.textValues[index] = input.value;
+                renderTextBoxes();
+                scheduleDecorationRefresh();
+            });
+
+            // Font awal dari admin; pelanggan boleh menggantinya per teks.
+            const chips = document.createElement('div');
+            chips.className = 'text-font-chips';
+            const currentFont = sessionState.textOverrides?.[index]?.font || slot.font;
+            Object.entries(fonts).forEach(([key, font]) => {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = `text-font-chip${key === currentFont ? ' selected' : ''}`;
+                chip.textContent = font.name;
+                chip.style.fontFamily = `"${font.family}", ${font.fallback || 'sans-serif'}`;
+                chip.style.fontWeight = String(font.weight || 600);
+                chip.addEventListener('click', () => {
+                    sessionState.textOverrides = {
+                        ...sessionState.textOverrides,
+                        [index]: { ...(sessionState.textOverrides?.[index] || {}), font: key },
+                    };
+                    chips.querySelectorAll('.text-font-chip').forEach(item => item.classList.toggle('selected', item === chip));
+                    scheduleDecorationRefresh();
+                });
+                chips.append(chip);
+            });
+
+            group.append(caption, input, chips);
+            textEntryFields.append(group);
+        });
+
+        const hint = document.createElement('p');
+        hint.className = 'text-entry-hint';
+        hint.textContent = 'Geser kotak teks di foto untuk memindahkan. Tarik bulatan di sudut untuk mengubah ukuran.';
+
+        const reset = document.createElement('button');
+        reset.type = 'button';
+        reset.className = 'text-entry-reset';
+        reset.textContent = 'Kembalikan Posisi & Font Awal';
+        reset.addEventListener('click', () => {
+            resetTextPositions();
+            renderTextEntryFields();
+        });
+
+        textEntryFields.append(hint, reset);
     }
 
     function syncTemplateStickerAccess() {
@@ -344,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function renderDecorationCanvas() {
         syncTemplateStickerAccess();
         ensurePhotoEdits();
+        renderTextEntryFields();
         await composePhotoStrip(sessionState.poses, sessionState.bgStyle);
         paintCompositeCanvas();
         renderPhotoEditTargets();
@@ -431,6 +518,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionState.photoEdits = sessionState.poses.map(makePhotoEdit);
             sessionState.selectedPhotoIndex = 0;
             sessionState.stickers = [];
+            sessionState.textValues = {};
+            sessionState.textOverrides = {};
             resetDrawing();
 
             renderPoseIndicators();
