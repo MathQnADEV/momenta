@@ -15,6 +15,7 @@ export const sessionState = {
     stickers: [],
     drawStrokes: [],
     textValues: {},
+    textOverrides: {},
     uploadStatus: 'idle',
     photoSlug: null,
     downloadUrl: null,
@@ -37,6 +38,7 @@ export const sessionState = {
         this.stickers = [];
         this.drawStrokes = [];
         this.textValues = {};
+        this.textOverrides = {};
         this.uploadStatus = 'idle';
         this.photoSlug = null;
         this.downloadUrl = null;

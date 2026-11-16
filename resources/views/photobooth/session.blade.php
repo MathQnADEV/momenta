@@ -278,6 +278,7 @@
                 <canvas id="composite-canvas"></canvas>
                 <div class="sticker-layer" id="sticker-layer"></div>
                 <canvas id="drawing-canvas" aria-label="Kanvas coret-coret"></canvas>
+                <div class="text-layer" id="text-layer"></div>
             </div>
 
             <div class="photo-edit-selector" id="photo-edit-selector">
@@ -483,7 +484,7 @@
                 <div class="text-entry-palette decorate-panel" id="decorate-text-panel" style="display:none;">
                     <div class="palette-head">
                         <h3 class="palette-title">Isi Teks</h3>
-                        <span class="palette-subtitle">Teks tampil di posisi yang sudah disiapkan. Kosongkan bila tidak perlu.</span>
+                        <span class="palette-subtitle">Isi teks, pilih font, lalu geser posisinya di foto. Kosongkan bila tidak perlu.</span>
                     </div>
                     <div class="text-entry-fields" id="text-entry-fields"></div>
                 </div>

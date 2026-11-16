@@ -501,7 +501,7 @@ export async function composePhotoStrip(poses, bgStyle) {
 
     // ── 3b. Teks isian pelanggan di atas gambar template ──────────────────────
     if (Array.isArray(frameConfig?.texts) && frameConfig.texts.length) {
-        await drawTemplateTexts(ctx, frameConfig.texts, sessionState.textValues || {});
+        await drawTemplateTexts(ctx, effectiveTextSlots(frameConfig.texts), sessionState.textValues || {});
     }
 
     // ── 4. Watermark / Branding (skip if frame has its own branding) ──────────
@@ -618,6 +618,15 @@ export async function findPersonFocus(index) {
         console.error("Failed to locate person:", error);
         return null;
     }
+}
+
+/**
+ * Area teks template setelah digeser/diubah pelanggan. Posisi dan font dari
+ * admin hanya menjadi titik awal; perubahan pelanggan disimpan per indeks.
+ */
+export function effectiveTextSlots(slots) {
+    const overrides = sessionState.textOverrides || {};
+    return (slots || []).map((slot, index) => ({ ...slot, ...(overrides[index] || {}) }));
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
