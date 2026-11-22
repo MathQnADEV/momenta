@@ -5245,13 +5245,14 @@ html.kiosk-landscape .session-top-nav {
     margin: 0;
 }
 
+/* Nomor langkah di tengah layar; tombol Momenta tetap di kiri. */
 html.kiosk-landscape .progress-bar {
-    grid-column: 2;
+    grid-column: 1 / -1;
     grid-row: 1;
+    justify-self: center;
     align-self: center;
-    width: 100%;
-    max-width: 900px;
-    margin: 0 0 0 auto;
+    width: min(100%, 860px);
+    margin: 0;
 }
 
 html.kiosk-landscape .step-num {
@@ -5301,6 +5302,54 @@ html.kiosk-landscape .step-actions .btn-secondary {
 html.kiosk-landscape .btn-back,
 html.kiosk-landscape .btn-secondary-sm {
     min-height: 56px;
+    font-size: 18px;
+}
+
+/* Teks kecil diperbesar agar terbaca di tablet (minimal sekitar 17–18 px). */
+html.kiosk-landscape .step-label {
+    font-size: 17px;
+}
+
+html.kiosk-landscape .layout-name {
+    font-size: 21px;
+}
+
+html.kiosk-landscape .layout-desc,
+html.kiosk-landscape .palette-subtitle,
+html.kiosk-landscape .photo-adjust-hint,
+html.kiosk-landscape .capture-preview-hint,
+html.kiosk-landscape .error-sub {
+    font-size: 17px;
+}
+
+html.kiosk-landscape .palette-title,
+html.kiosk-landscape .capture-main .timer-palette .palette-title {
+    font-size: 18px;
+}
+
+html.kiosk-landscape .timer-chip,
+html.kiosk-landscape .timer-chip-value {
+    font-size: 22px;
+    font-weight: 800;
+}
+
+html.kiosk-landscape .capture-slot-retake,
+html.kiosk-landscape .photo-adjust-tag {
+    font-size: 16px;
+}
+
+html.kiosk-landscape .photo-edit-target strong,
+html.kiosk-landscape .photo-filter-card strong,
+html.kiosk-landscape .swatch-label,
+html.kiosk-landscape .sticker-name,
+html.kiosk-landscape .sticker-category-chip {
+    font-size: 16px;
+}
+
+html.kiosk-landscape .background-source-tab,
+html.kiosk-landscape .background-none-card strong,
+html.kiosk-landscape .draw-tool-button,
+html.kiosk-landscape .mode-chip {
     font-size: 18px;
 }
 
@@ -5500,6 +5549,61 @@ html.kiosk-landscape .print-preview canvas {
     height: auto;
     max-width: 100%;
     max-height: calc(100% - 30px);
+}
+
+/* ==========================================================================
+   ZOOM TAMPILAN PRATINJAU HIAS
+   ========================================================================== */
+.sticker-mode-toggle[hidden] {
+    display: none;
+}
+
+.canvas-zoom {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transform-origin: 0 0;
+    transition: transform 0.25s ease;
+}
+
+.canvas-zoom-controls {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    border-radius: 999px;
+    background: rgba(43, 39, 37, 0.86);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.25);
+}
+
+.canvas-zoom-controls button {
+    min-width: 52px;
+    height: 52px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.canvas-zoom-controls .canvas-zoom-value {
+    min-width: 76px;
+    font-size: 18px;
+}
+
+.canvas-zoom-controls button:active {
+    background: rgba(255, 255, 255, 0.18);
 }
 
 /* ==========================================================================

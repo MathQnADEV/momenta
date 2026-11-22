@@ -16,6 +16,7 @@ import {
 import { uploadPhotoStrip } from './upload.js';
 import { openPrintFlow } from './print.js';
 import { initCapturePreview, renderCapturePreview } from './capture-preview.js';
+import { initCanvasZoom, resetCanvasZoom, updateCanvasZoom } from './canvas-zoom.js';
 import { initTextLayer, renderTextBoxes, resetTextPositions, setTextLayerEnabled } from './text-layer.js';
 import {
     initPhotoAdjust,
@@ -53,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const colorPreview = document.getElementById('photo-background-color-preview');
     const backgroundProcessingStatus = document.getElementById('background-processing-status');
     const clearStickersButton = document.getElementById('btn-clear-stickers');
-    const templateManualNotice = document.getElementById('template-manual-notice');
+    const stickerModeToggle = document.getElementById('sticker-mode-toggle');
     const autoStickerButton = document.querySelector('[data-sticker-mode="auto"]');
 
     let stylePreviewDebounce = null;
@@ -64,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initTextLayer({ onChange: () => scheduleDecorationRefresh() });
     initCapturePreview({ onRetake: index => retakePose(index) });
+    initCanvasZoom();
     initPhotoAdjust({
         onChange: () => scheduleDecorationRefresh(),
         onSync: transform => syncAdjustControls(transform),
@@ -360,7 +362,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function syncTemplateStickerAccess() {
         const templateLayout = isTemplateLayout();
 
-        if (templateManualNotice) templateManualNotice.hidden = !templateLayout;
+        // Template sudah punya hiasan sendiri, jadi stiker Auto (tema otomatis di tepi
+        // foto) tidak dipakai; pilihan Auto/Manual disembunyikan, langsung Manual.
+        if (stickerModeToggle) stickerModeToggle.hidden = templateLayout;
         if (autoStickerButton) {
             autoStickerButton.disabled = templateLayout;
             autoStickerButton.setAttribute('aria-disabled', templateLayout ? 'true' : 'false');
@@ -383,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.photo-edit-target').forEach(button => {
             button.classList.toggle('selected', Number(button.dataset.photoIndex) === selectedIndex);
         });
+        updateCanvasZoom();
 
         document.querySelectorAll('[data-photo-background-url]').forEach(button => {
             button.classList.toggle(
@@ -584,6 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionState.textValues = {};
             sessionState.textOverrides = {};
             resetDrawing();
+            resetCanvasZoom();
 
             renderPoseIndicators();
             goToStep('capture');
