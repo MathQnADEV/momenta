@@ -281,9 +281,6 @@
     <section class="session-step" id="step-stickers">
         <h2 class="step-title">Hias Foto</h2>
         <p class="step-desc">Pilih foto, lalu atur background, filter, stiker, atau coretan.</p>
-        <div class="template-manual-notice" id="template-manual-notice" hidden>
-            Mode Auto tidak tersedia untuk layout Template. Gunakan mode Manual, Background, Filter, atau Coret-coret.
-        </div>
 
         <div class="decorate-mode-toggle decorate-mode-toggle--four" id="decorate-mode-toggle">
             <button class="decorate-mode-button selected" type="button" data-decorate-mode="background">Background</button>
@@ -296,11 +293,19 @@
 
         <div class="sticker-workspace">
             <div class="canvas-wrapper" id="canvas-wrapper">
-                <canvas id="composite-canvas"></canvas>
-                <div class="sticker-layer" id="sticker-layer"></div>
-                <canvas id="drawing-canvas" aria-label="Kanvas coret-coret"></canvas>
-                <div class="text-layer" id="text-layer"></div>
-                <div class="photo-adjust-layer" id="photo-adjust-layer"></div>
+                {{-- Lapisan zoom tampilan: hanya memperbesar layar, hasil foto tidak berubah. --}}
+                <div class="canvas-zoom" id="canvas-zoom">
+                    <canvas id="composite-canvas"></canvas>
+                    <div class="sticker-layer" id="sticker-layer"></div>
+                    <canvas id="drawing-canvas" aria-label="Kanvas coret-coret"></canvas>
+                    <div class="text-layer" id="text-layer"></div>
+                    <div class="photo-adjust-layer" id="photo-adjust-layer"></div>
+                </div>
+                <div class="canvas-zoom-controls" role="group" aria-label="Zoom tampilan">
+                    <button type="button" data-canvas-zoom="out" aria-label="Perkecil tampilan">−</button>
+                    <button type="button" class="canvas-zoom-value" data-canvas-zoom="reset" id="canvas-zoom-value" aria-label="Kembalikan zoom tampilan">100%</button>
+                    <button type="button" data-canvas-zoom="in" aria-label="Perbesar tampilan">+</button>
+                </div>
             </div>
 
             <div class="photo-edit-selector" id="photo-edit-selector">
