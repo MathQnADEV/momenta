@@ -649,7 +649,12 @@ async function apiRequest(url, method = 'GET', body = null) {
         },
         body: body ? JSON.stringify(body) : undefined,
     });
-    if (!response.ok) throw new Error(`Server merespon ${response.status}`);
+    if (!response.ok) {
+        const error = new Error(`Server merespon ${response.status}`);
+        error.status = response.status;
+        error.payload = await response.json().catch(() => null);
+        throw error;
+    }
     return response.json();
 }
 
@@ -657,15 +662,18 @@ function renderPaymentPanel() {
     const order = printState.order;
     if (!order) return;
     const simulation = order.payment_driver === 'simulation';
+    const qrisStatic = order.payment_driver === 'qris_static';
 
     document.getElementById('print-invoice').textContent = order.invoice_number;
     document.getElementById('print-package-summary').textContent = `Paket ${order.package_code} — ${order.package_name}`;
     document.getElementById('print-amount').textContent = priceFormatter.format(order.amount);
     document.getElementById('print-simulation-note').hidden = !simulation;
     document.getElementById('btn-simulate-payment').hidden = !simulation;
+    document.getElementById('print-qris').hidden = !qrisStatic;
+    document.getElementById('print-pin-form').hidden = !qrisStatic || order.status === 'paid';
     document.getElementById('print-payment-status').textContent = order.status === 'paid'
         ? 'Pembayaran diterima.'
-        : simulation ? 'Menunggu konfirmasi operator.' : 'Menunggu pembayaran...';
+        : simulation || qrisStatic ? 'Menunggu konfirmasi operator.' : 'Menunggu pembayaran...';
 }
 
 async function goToPayment() {
@@ -678,9 +686,11 @@ async function goToPayment() {
             package_code: printState.packageCode,
             photo_slug: sessionState.photoSlug,
         });
+        resetPinForm();
         renderPaymentPanel();
         setStage('payment');
-        if (printState.order.payment_driver !== 'simulation') startPolling();
+        // Simulasi dan QRIS statis dikonfirmasi manual; driver otomatis (DOKU) dicek berkala.
+        if (!['simulation', 'qris_static'].includes(printState.order.payment_driver)) startPolling();
     } catch (error) {
         console.error('Gagal membuat pesanan cetak:', error);
         alert('Gagal membuat tagihan. Periksa koneksi lalu coba lagi.');
@@ -730,6 +740,49 @@ async function simulatePayment() {
     } catch (error) {
         console.error('Gagal mengonfirmasi pembayaran:', error);
         alert('Konfirmasi pembayaran gagal. Silakan coba lagi.');
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function resetPinForm() {
+    const input = document.getElementById('print-operator-pin');
+    const error = document.getElementById('print-pin-error');
+    if (input) input.value = '';
+    if (error) error.hidden = true;
+}
+
+async function confirmPaymentWithPin(event) {
+    event.preventDefault();
+    const input = document.getElementById('print-operator-pin');
+    const error = document.getElementById('print-pin-error');
+    const button = document.getElementById('btn-confirm-payment');
+    const pin = input.value.trim();
+
+    if (!pin) {
+        error.textContent = 'Masukkan PIN operator.';
+        error.hidden = false;
+        input.focus();
+        return;
+    }
+
+    button.disabled = true;
+    error.hidden = true;
+    try {
+        printState.order = await apiRequest(
+            `${window.PHOTOBOOTH_CONFIG.printOrdersUrl}/${printState.order.invoice_number}/confirm-payment`,
+            'POST',
+            { pin },
+        );
+        renderPaymentPanel();
+        if (printState.order.status === 'paid') await onPaid();
+    } catch (failure) {
+        error.textContent = failure.status === 429
+            ? 'Terlalu banyak percobaan. Tunggu 1 menit lalu coba lagi.'
+            : failure.payload?.errors?.pin?.[0] || 'Konfirmasi gagal. Periksa koneksi lalu coba lagi.';
+        error.hidden = false;
+        input.value = '';
+        input.focus();
     } finally {
         button.disabled = false;
     }
@@ -814,6 +867,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setStage('design');
     });
     document.getElementById('btn-simulate-payment')?.addEventListener('click', simulatePayment);
+    document.getElementById('print-pin-form')?.addEventListener('submit', confirmPaymentWithPin);
     document.getElementById('btn-print-sheet')?.addEventListener('click', printSheet);
     document.getElementById('btn-download-sheet')?.addEventListener('click', downloadSheet);
 });

@@ -143,7 +143,7 @@
 <body>
     <div class="show-container">
         <div class="header">
-            <img class="brand-logo" src="{{ asset('logos/LogoNoBg.webp') }}" alt="Momenta">
+            <img class="brand-logo" src="{{ asset('images/logos/LogoNoBg.webp') }}" alt="Momenta">
             <h1 class="title">Foto Kenangan</h1>
             <p class="subtitle">Diambil pada {{ $photo->created_at->format('d M Y, H:i') }} • Tersedia sampai {{ $photo->expires_at?->format('H:i') }}</p>
         </div>

@@ -15,6 +15,7 @@ import {
 } from './doodle.js';
 import { uploadPhotoStrip } from './upload.js';
 import { openPrintFlow } from './print.js';
+import { initCapturePreview, renderCapturePreview } from './capture-preview.js';
 import { initTextLayer, renderTextBoxes, resetTextPositions, setTextLayerEnabled } from './text-layer.js';
 import {
     initPhotoAdjust,
@@ -62,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let backgroundStatusTimer = null;
 
     initTextLayer({ onChange: () => scheduleDecorationRefresh() });
+    initCapturePreview({ onRetake: index => retakePose(index) });
     initPhotoAdjust({
         onChange: () => scheduleDecorationRefresh(),
         onSync: transform => syncAdjustControls(transform),
@@ -185,6 +187,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             poseIndicators.appendChild(thumb);
         }
+
+        renderCapturePreview();
+    }
+
+    async function retakePose(poseIndex) {
+        await captureSinglePose(
+            poseIndex,
+            () => {
+                renderPoseIndicators();
+                updateCaptureUI();
+            },
+            sessionState.captureDelay || 3,
+        );
     }
 
     function updateProgress(newStep) {
@@ -579,17 +594,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const retakeButton = event.target.closest('.pose-thumb-retake');
         if (!retakeButton || retakeButton.disabled) return;
 
-        const poseIndex = Number(retakeButton.dataset.pose);
         retakeButton.textContent = 'Menunggu...';
-
-        await captureSinglePose(
-            poseIndex,
-            () => {
-                renderPoseIndicators();
-                updateCaptureUI();
-            },
-            sessionState.captureDelay || 3,
-        );
+        await retakePose(Number(retakeButton.dataset.pose));
     });
 
     document.querySelectorAll('[data-capture-seconds]').forEach(chip => {

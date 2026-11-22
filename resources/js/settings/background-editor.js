@@ -4,12 +4,12 @@ const tabButtons = document.querySelectorAll('[data-settings-tab]');
 const tabPanels = document.querySelectorAll('[data-settings-panel]');
 
 function activateSettingsTab(tab) {
-    const target = tab === 'backgrounds' ? 'backgrounds' : 'templates';
+    const target = ['backgrounds', 'payment'].includes(tab) ? tab : 'templates';
     tabButtons.forEach(button => button.classList.toggle('is-active', button.dataset.settingsTab === target));
     tabPanels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.settingsPanel === target));
 
     const url = new URL(window.location.href);
-    if (target === 'backgrounds') url.searchParams.set('tab', 'backgrounds');
+    if (target !== 'templates') url.searchParams.set('tab', target);
     else url.searchParams.delete('tab');
     window.history.replaceState({}, '', url);
 }

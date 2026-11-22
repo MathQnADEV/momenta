@@ -6,7 +6,7 @@
 <main class="settings-login-shell">
     <section class="settings-login-card">
         <div class="settings-brand-mark">
-            <img src="{{ asset('logos/LogoNoBg.webp') }}" alt="Momenta">
+            <img src="{{ asset('images/logos/LogoNoBg.webp') }}" alt="Momenta">
         </div>
         <p class="settings-kicker">ADMIN PHOTO BOOTH</p>
         <h1>Masuk Pengaturan</h1>

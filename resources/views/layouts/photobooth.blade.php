@@ -17,11 +17,15 @@
         (() => {
             const root = document.documentElement;
 
-            // Layar kiosk asli (9:16) tampil apa adanya; layar yang lebih lebar memakai kanvas yang diperkecil.
+            // Layar kiosk asli (9:16) tampil apa adanya. Layar portrait yang lebih lebar memakai
+            // kanvas 1080 × 1920 yang diperkecil. Layar landscape (tablet/laptop) memakai kanvas
+            // landscape setinggi 1080 dengan lebar mengikuti rasio layar (3:2 sampai 16:9).
             const fitKioskStage = () => {
                 const { innerWidth: width, innerHeight: height } = window;
+                const isLandscape = width > height;
                 const isStage = width / height > 9 / 16;
                 root.classList.toggle('kiosk-stage', isStage);
+                root.classList.toggle('kiosk-landscape', isLandscape);
 
                 if (!isStage) {
                     ['--kiosk-width', '--kiosk-height', '--kiosk-scale', '--vh', '--vw'].forEach((name) => root.style.removeProperty(name));
@@ -29,8 +33,10 @@
                 }
 
                 const density = height > width && width >= 2000 ? 2 : 1;
-                const stageWidth = 1080 * density;
-                const stageHeight = 1920 * density;
+                const stageWidth = isLandscape
+                    ? Math.round(Math.min(1920, Math.max(1440, (1080 * width) / height)))
+                    : 1080 * density;
+                const stageHeight = isLandscape ? 1080 : 1920 * density;
 
                 root.style.setProperty('--kiosk-width', `${stageWidth}px`);
                 root.style.setProperty('--kiosk-height', `${stageHeight}px`);

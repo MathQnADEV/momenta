@@ -106,6 +106,8 @@
         <h2 class="step-title">Ambil Foto</h2>
         <p class="step-desc" id="capture-desc">Ambil semua foto, lalu tekan “Ulang” pada foto yang ingin diganti.</p>
 
+        <div class="capture-layout">
+        <div class="capture-main">
         <div class="timer-palette" id="timer-palette">
             <span class="palette-title" style="margin-bottom: 0;">Timer Capture</span>
             <div class="timer-grid">
@@ -126,6 +128,8 @@
         <div class="capture-area">
             <div class="camera-viewport">
                 <video id="camera-video" autoplay playsinline muted></video>
+                {{-- Area yang benar-benar masuk ke slot; di luar garis ini akan terpotong. --}}
+                <div class="capture-guide" id="capture-guide" hidden></div>
                 <div class="countdown-overlay" id="countdown-overlay">
                     <span class="countdown-number" id="countdown-number">3</span>
                 </div>
@@ -150,8 +154,24 @@
             </button>
         </div>
 
-        <div class="step-actions">
+        <div class="step-actions capture-back-actions">
             <button class="btn-back" id="btn-back-layout">Ganti Layout</button>
+        </div>
+        </div>
+
+        {{-- Pratinjau template: kamera tampil langsung di slot yang sedang diisi. --}}
+        <aside class="capture-preview" aria-label="Pratinjau template">
+            <span class="capture-target-label" id="capture-target-label">Foto 1</span>
+            <div class="capture-template-box">
+                <div class="capture-template" id="capture-template">
+                    <canvas class="capture-template-canvas" id="capture-template-canvas"></canvas>
+                    <video class="capture-template-live" id="capture-template-live" autoplay playsinline muted></video>
+                    <img class="capture-template-overlay" id="capture-template-overlay" alt="" hidden>
+                    <div class="capture-template-slots" id="capture-template-slots"></div>
+                </div>
+            </div>
+            <p class="capture-preview-hint" id="capture-preview-hint">Tekan foto di template untuk mengulang.</p>
+        </aside>
         </div>
     </section>
 
@@ -613,14 +633,34 @@
         <div class="print-panel" data-print-stage="payment" hidden>
             <h2 class="step-title">Pembayaran</h2>
             <p class="step-desc" id="print-package-summary"></p>
-            <div class="print-payment-card">
-                <span class="print-payment-label">Total</span>
-                <strong class="print-payment-amount" id="print-amount"></strong>
-                <span class="print-payment-invoice">No. Invoice <b id="print-invoice"></b></span>
-                <span class="print-payment-status" id="print-payment-status"></span>
-                <p class="print-simulation-note" id="print-simulation-note" hidden>
-                    Mode simulasi: belum terhubung ke DOKU. Operator menekan tombol di bawah setelah menerima pembayaran.
-                </p>
+            <div class="print-payment-layout">
+                <div class="print-qris" id="print-qris" hidden>
+                    <img src="{{ asset(config('photobooth.payment.qris_image')) }}" alt="QRIS pembayaran Momenta">
+                    <span>Scan dengan aplikasi bank atau e-wallet, lalu tunjukkan bukti bayar ke operator.</span>
+                </div>
+                <div class="print-payment-card">
+                    <span class="print-payment-label">Total</span>
+                    <strong class="print-payment-amount" id="print-amount"></strong>
+                    <span class="print-payment-invoice">No. Invoice <b id="print-invoice"></b></span>
+                    <span class="print-payment-status" id="print-payment-status"></span>
+                    <p class="print-simulation-note" id="print-simulation-note" hidden>
+                        Mode simulasi: belum terhubung ke DOKU. Operator menekan tombol di bawah setelah menerima pembayaran.
+                    </p>
+
+                    {{-- QRIS statis: operator mengecek uang masuk, lalu mengetik PIN. --}}
+                    <form class="print-pin-form" id="print-pin-form" hidden>
+                        <label for="print-operator-pin">Khusus operator: masukkan PIN setelah pembayaran masuk</label>
+                        <input id="print-operator-pin"
+                               type="password"
+                               inputmode="numeric"
+                               pattern="[0-9]*"
+                               maxlength="6"
+                               autocomplete="off"
+                               placeholder="PIN">
+                        <span class="print-pin-error" id="print-pin-error" role="alert" hidden></span>
+                        <button class="btn-primary btn-glow" id="btn-confirm-payment" type="submit">Pembayaran Diterima</button>
+                    </form>
+                </div>
             </div>
             <div class="step-actions">
                 <button class="btn-primary btn-glow" id="btn-simulate-payment" type="button" hidden>Konfirmasi Pembayaran (Simulasi)</button>
@@ -662,7 +702,7 @@
         textFonts: @json(config('photobooth.text_fonts', [])),
         print: @json($printConfig),
         printOrdersUrl: '/api/print-orders',
-        logoUrl: @json(asset('logos/LogoNoBg.webp')),
+        logoUrl: @json(asset('images/logos/LogoNoBg.webp')),
     };
 </script>
 @endsection

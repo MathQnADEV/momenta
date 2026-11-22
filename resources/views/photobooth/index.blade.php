@@ -11,7 +11,7 @@
     <!-- Logo / Header -->
     <div class="menu-header">
         <div class="logo-glow">
-            <img class="menu-logo" src="{{ asset('logos/LogoNoBg.webp') }}" alt="Momenta">
+            <img class="menu-logo" src="{{ asset('images/logos/LogoNoBg.webp') }}" alt="Momenta">
         </div>
         <h1 class="menu-title">
             <span class="title-gradient">Foto Kenangan</span>

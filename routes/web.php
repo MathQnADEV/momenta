@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\PrintOrderController;
 use App\Http\Controllers\PhotoBoothController;
 use App\Http\Controllers\PublicPhotoController;
 use App\Http\Controllers\Settings\BackgroundSettingsController;
+use App\Http\Controllers\Settings\PaymentSettingsController;
 use App\Http\Controllers\Settings\SettingsAuthController;
 use App\Http\Controllers\Settings\TemplateSettingsController;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +35,10 @@ Route::prefix('api/print-orders')->middleware('throttle:60,1')->group(function (
     Route::get('/{invoice}', [PrintOrderController::class, 'show'])->name('api.print-orders.show');
     Route::post('/{invoice}/simulate-payment', [PrintOrderController::class, 'simulatePayment'])
         ->name('api.print-orders.simulate-payment');
+    // Batas ketat agar PIN operator tidak bisa ditebak beruntun.
+    Route::post('/{invoice}/confirm-payment', [PrintOrderController::class, 'confirmPayment'])
+        ->middleware('throttle:10,1')
+        ->name('api.print-orders.confirm-payment');
 });
 
 Route::prefix('photobooth/settings')->group(function () {
@@ -52,6 +57,7 @@ Route::prefix('photobooth/settings')->group(function () {
         Route::post('/backgrounds', [BackgroundSettingsController::class, 'store'])->name('settings.backgrounds.store');
         Route::put('/backgrounds/{background}', [BackgroundSettingsController::class, 'update'])->name('settings.backgrounds.update');
         Route::delete('/backgrounds/{background}', [BackgroundSettingsController::class, 'destroy'])->name('settings.backgrounds.destroy');
+        Route::put('/operator-pin', [PaymentSettingsController::class, 'updatePin'])->name('settings.operator-pin.update');
     });
 });
 
