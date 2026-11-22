@@ -401,6 +401,7 @@
                             ['id' => 'vivid', 'name' => 'Vivid', 'css' => 'saturate(1.45) contrast(1.08)'],
                             ['id' => 'soft', 'name' => 'Soft', 'css' => 'brightness(1.08) contrast(.88) saturate(.92)'],
                             ['id' => 'sepia', 'name' => 'Sepia', 'css' => 'sepia(.78) contrast(1.02)'],
+                            ['id' => 'blur', 'name' => 'Blur', 'css' => 'blur(3px)'],
                         ] as $filter)
                             <button class="photo-filter-card {{ $filter['id'] === 'none' ? 'selected' : '' }}"
                                     type="button"

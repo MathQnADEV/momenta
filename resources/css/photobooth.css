@@ -5568,6 +5568,15 @@ html.kiosk-landscape .print-preview canvas {
     transition: transform 0.25s ease;
 }
 
+/* Cubit dua jari dipakai untuk zoom pratinjau, bukan zoom halaman browser. */
+#canvas-wrapper {
+    touch-action: none;
+}
+
+#canvas-wrapper.is-pinching .canvas-zoom {
+    transition: none;
+}
+
 .canvas-zoom-controls {
     position: absolute;
     right: 14px;
