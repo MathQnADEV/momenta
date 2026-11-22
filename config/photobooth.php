@@ -853,8 +853,12 @@ return [
     |
     */
     'payment' => [
-        'driver' => env('PHOTOBOOTH_PAYMENT_DRIVER', 'simulation'),
+        // simulation  : tombol konfirmasi tanpa bayar (uji coba).
+        // qris_static : tampilkan gambar QRIS; operator mengonfirmasi dengan PIN.
+        // Nanti ditambah driver DOKU yang mendeteksi pembayaran otomatis.
+        'driver' => env('PHOTOBOOTH_PAYMENT_DRIVER', 'qris_static'),
         'currency' => 'IDR',
+        'qris_image' => env('PHOTOBOOTH_QRIS_IMAGE', 'images/qris/qrisMas.jpeg'),
     ],
 
     /*

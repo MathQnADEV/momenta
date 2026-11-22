@@ -3,7 +3,7 @@
 @section('title', 'Pengaturan Photo Booth')
 
 @section('content')
-@php $activeSettingsTab = request('tab', 'templates') === 'backgrounds' ? 'backgrounds' : 'templates'; @endphp
+@php $activeSettingsTab = in_array(request('tab'), ['backgrounds', 'payment'], true) ? request('tab') : 'templates'; @endphp
 <div class="settings-app-shell">
     <header class="settings-topbar">
         <div>
@@ -30,6 +30,11 @@
                 type="button"
                 data-settings-tab="backgrounds">
             Background
+        </button>
+        <button class="settings-section-tab {{ $activeSettingsTab === 'payment' ? 'is-active' : '' }}"
+                type="button"
+                data-settings-tab="payment">
+            Pembayaran
         </button>
     </nav>
 
@@ -331,7 +336,41 @@
             </section>
         </main>
     </section>
+    <section class="settings-tab-panel {{ $activeSettingsTab === 'payment' ? 'is-active' : '' }}" data-settings-panel="payment">
+        <main class="settings-payment">
+            <section class="settings-payment-card">
+                <h2>PIN Operator</h2>
+                <p>
+                    Pelanggan membayar cetakan dengan scan QRIS. Setelah notifikasi uang masuk di HP,
+                    operator mengetik PIN ini di booth untuk menandai pesanan lunas.
+                </p>
+                <p class="settings-payment-status {{ $operatorPinSet ? 'is-set' : 'is-unset' }}">
+                    {{ $operatorPinSet ? 'PIN sudah diatur. Isi form di bawah untuk menggantinya.' : 'PIN belum diatur. Pembayaran QRIS belum bisa dikonfirmasi.' }}
+                </p>
+                <form method="POST" action="{{ route('settings.operator-pin.update') }}" class="settings-payment-form">
+                    @csrf
+                    @method('PUT')
+                    <label>
+                        <span>PIN baru (4–6 angka)</span>
+                        <input type="password" name="operator_pin" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="new-password" required>
+                    </label>
+                    <label>
+                        <span>Ulangi PIN</span>
+                        <input type="password" name="operator_pin_confirmation" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="new-password" required>
+                    </label>
+                    <button class="settings-primary-button" type="submit">Simpan PIN</button>
+                </form>
+            </section>
+
+            <section class="settings-payment-card">
+                <h2>QRIS</h2>
+                <p>Gambar QRIS yang tampil di booth. Ganti filenya di <code>public/{{ config('photobooth.payment.qris_image') }}</code>.</p>
+                <img class="settings-payment-qris" src="{{ asset(config('photobooth.payment.qris_image')) }}" alt="QRIS pembayaran">
+            </section>
+        </main>
+    </section>
 </div>
+
 @endsection
 
 @push('scripts')

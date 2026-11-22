@@ -64,6 +64,7 @@ export async function initCamera() {
         await waitForVideoReady();
 
         if (startCaptureButton) startCaptureButton.disabled = false;
+        document.dispatchEvent(new CustomEvent('photobooth:camera-ready'));
         return true;
     } catch (error) {
         console.error('Gagal mengakses kamera:', error);
@@ -120,7 +121,11 @@ async function runCountdown(seconds) {
     countdownOverlay.classList.remove('active');
 }
 
-function calculateCrop(videoWidth, videoHeight, targetAspectRatio) {
+export function isCaptureInProgress() {
+    return captureInProgress;
+}
+
+export function calculateCrop(videoWidth, videoHeight, targetAspectRatio) {
     let sourceWidth = videoHeight * targetAspectRatio;
     let sourceHeight = videoHeight;
     let sourceX = (videoWidth - sourceWidth) / 2;
@@ -157,6 +162,7 @@ async function capturePose(index, countdownSeconds) {
 
     const thumb = document.querySelector(`.pose-thumb[data-pose="${index}"]`);
     thumb?.classList.add('active');
+    document.dispatchEvent(new CustomEvent('photobooth:capture-target', { detail: { index } }));
 
     await runCountdown(countdownSeconds);
 
@@ -193,6 +199,7 @@ async function capturePose(index, countdownSeconds) {
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
     sessionState.poses[index] = dataUrl;
     setPoseThumb(index, dataUrl);
+    document.dispatchEvent(new CustomEvent('photobooth:pose-captured', { detail: { index } }));
 
     return dataUrl;
 }
@@ -205,16 +212,19 @@ async function withCaptureLock(callback) {
     document.querySelectorAll('.pose-thumb-retake').forEach(button => {
         button.disabled = true;
     });
+    document.documentElement.classList.add('is-capturing');
 
     try {
         await callback();
         return true;
     } finally {
         captureInProgress = false;
+        document.documentElement.classList.remove('is-capturing');
         if (startCaptureButton) startCaptureButton.disabled = false;
         document.querySelectorAll('.pose-thumb-retake').forEach(button => {
             button.disabled = false;
         });
+        document.dispatchEvent(new CustomEvent('photobooth:capture-idle'));
     }
 }
 

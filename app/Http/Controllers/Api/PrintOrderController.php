@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Photo;
 use App\Models\PrintOrder;
+use App\Models\SettingsCredential;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -69,6 +72,45 @@ class PrintOrderController extends Controller
             $order->update([
                 'status' => 'paid',
                 'payment_reference' => 'SIM-'.Str::upper(Str::random(10)),
+                'paid_at' => now(),
+            ]);
+        }
+
+        return response()->json($order->toPayload());
+    }
+
+    /**
+     * POST /api/print-orders/{invoice}/confirm-payment — Operator menandai lunas dengan PIN.
+     *
+     * Untuk QRIS statis: aplikasi tidak tahu uang sudah masuk, jadi operator
+     * mengecek notifikasi di HP-nya lalu memasukkan PIN di booth.
+     */
+    public function confirmPayment(Request $request, string $invoice): JsonResponse
+    {
+        abort_unless(config('photobooth.payment.driver') === 'qris_static', 404);
+
+        $validated = $request->validate([
+            'pin' => ['required', 'string', 'max:12'],
+        ]);
+
+        $pinHash = SettingsCredential::query()->value('operator_pin_hash');
+
+        if (! $pinHash) {
+            throw ValidationException::withMessages([
+                'pin' => 'PIN operator belum diatur. Atur dulu di halaman Pengaturan.',
+            ]);
+        }
+
+        if (! Hash::check($validated['pin'], $pinHash)) {
+            throw ValidationException::withMessages(['pin' => 'PIN salah.']);
+        }
+
+        $order = PrintOrder::where('invoice_number', $invoice)->firstOrFail();
+
+        if ($order->status === 'pending') {
+            $order->update([
+                'status' => 'paid',
+                'payment_reference' => 'QRIS-OP-'.now()->format('His').'-'.Str::upper(Str::random(4)),
                 'paid_at' => now(),
             ]);
         }

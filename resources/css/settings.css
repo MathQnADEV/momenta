@@ -719,7 +719,7 @@ a {
 /* Settings sections: Template Layout and Background */
 .settings-section-tabs {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
     margin: 20px 0;
     padding: 8px;
@@ -921,4 +921,77 @@ a {
     height: 12px;
     margin-left: -1px;
     background: #2563eb;
+}
+
+/* Tab Pembayaran: PIN operator dan gambar QRIS */
+.settings-payment {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    align-items: start;
+}
+
+.settings-payment-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 26px;
+    border: 1px solid rgba(43, 39, 37, 0.1);
+    border-radius: 22px;
+    background: #fff;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+.settings-payment-card h2 {
+    margin: 0;
+    font-size: 22px;
+}
+
+.settings-payment-card p {
+    margin: 0;
+    color: #6f645d;
+    line-height: 1.5;
+}
+
+.settings-payment-status {
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-weight: 700;
+}
+
+.settings-payment-status.is-set {
+    background: #ecfdf3;
+    color: #166534 !important;
+}
+
+.settings-payment-status.is-unset {
+    background: #fff4e5;
+    color: #9a3412 !important;
+}
+
+.settings-payment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.settings-payment-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-weight: 700;
+}
+
+.settings-payment-form input {
+    padding: 12px 14px;
+    border: 1px solid rgba(43, 39, 37, 0.2);
+    border-radius: 12px;
+    font-size: 20px;
+    letter-spacing: 6px;
+}
+
+.settings-payment-qris {
+    width: min(100%, 320px);
+    border-radius: 14px;
+    border: 1px solid rgba(43, 39, 37, 0.12);
 }

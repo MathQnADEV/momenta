@@ -5050,3 +5050,561 @@ html.kiosk-stage .app-container {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
+
+/* ==========================================================================
+   PRATINJAU TEMPLATE DI LANGKAH FOTO (kamera live di slot)
+   ========================================================================== */
+.capture-layout,
+.capture-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Portrait: tetap memakai deretan thumbnail seperti sebelumnya. */
+.capture-preview {
+    display: none;
+}
+
+.capture-guide {
+    position: absolute;
+    z-index: 1;
+    border: 3px dashed rgba(255, 255, 255, 0.95);
+    border-radius: 6px;
+    box-shadow: 0 0 0 9999px rgba(15, 12, 10, 0.42);
+    pointer-events: none;
+}
+
+.capture-guide[hidden] {
+    display: none;
+}
+
+.capture-target-label {
+    align-self: center;
+    padding: 10px 22px;
+    border-radius: 999px;
+    background: #2b2725;
+    color: #fff;
+    font-size: 19px;
+    font-weight: 800;
+}
+
+.capture-target-label.is-done {
+    background: var(--secondary);
+}
+
+.capture-template-box {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    container-type: size;
+}
+
+.capture-template {
+    position: relative;
+    /* Muat di kotak: tinggi penuh, kecuali template terlalu lebar. */
+    height: 100cqh;
+    max-width: 100cqw;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 16px 38px rgba(15, 23, 42, 0.18);
+}
+
+.capture-template-canvas,
+.capture-template-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.capture-template-overlay {
+    z-index: 2;
+    pointer-events: none;
+}
+
+.capture-template-live {
+    position: absolute;
+    z-index: 1;
+    object-fit: cover;
+    transform: scaleX(-1);
+    background: #111;
+}
+
+.capture-template-live[hidden],
+.capture-template-overlay[hidden] {
+    display: none;
+}
+
+.capture-template-slots {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+}
+
+.capture-slot {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.capture-slot:disabled {
+    cursor: default;
+}
+
+/* Slot yang belum terisi tetap terlihat walau latar template putih. */
+.capture-slot:not(.is-captured):not(.is-target) {
+    background: rgba(43, 39, 37, 0.07);
+    outline: 2px dashed rgba(43, 39, 37, 0.25);
+    outline-offset: -2px;
+}
+
+.capture-slot.is-target {
+    outline: 4px solid #e09494;
+    outline-offset: -2px;
+    box-shadow: 0 0 0 4px rgba(224, 148, 148, 0.35), 0 0 22px rgba(224, 148, 148, 0.8);
+    animation: captureTargetPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes captureTargetPulse {
+    50% { box-shadow: 0 0 0 7px rgba(224, 148, 148, 0.2), 0 0 30px rgba(224, 148, 148, 0.95); }
+}
+
+.capture-slot-num {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+    color: #2b2725;
+    font-size: 18px;
+    font-weight: 800;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+}
+
+.capture-slot.is-captured .capture-slot-num,
+.capture-slot.is-target .capture-slot-num {
+    display: none;
+}
+
+/* Tombol "Ulang" di pojok bawah agar wajah di foto tidak tertutup. */
+.capture-slot-retake {
+    display: none;
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(43, 39, 37, 0.85);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.capture-slot.is-captured:not(:disabled):not(.is-target) .capture-slot-retake {
+    display: block;
+}
+
+.capture-preview-hint {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 16px;
+    text-align: center;
+}
+
+.capture-preview-hint[hidden] {
+    display: none;
+}
+
+/* ==========================================================================
+   TABLET / LAPTOP LANDSCAPE (Xiaomi Pad 8 Pro 3:2, laptop 16:9)
+   Kanvas setinggi 1080 px; setiap langkah dibagi kiri dan kanan.
+   ========================================================================== */
+html.kiosk-landscape .session-container {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 36px;
+    padding: 24px 40px 28px;
+}
+
+html.kiosk-landscape .session-top-nav {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    width: auto;
+    margin: 0;
+}
+
+html.kiosk-landscape .progress-bar {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 0 0 auto;
+}
+
+html.kiosk-landscape .step-num {
+    width: 46px;
+    height: 46px;
+    font-size: 19px;
+}
+
+html.kiosk-landscape .step-label {
+    margin-top: 5px;
+    font-size: 15px;
+}
+
+html.kiosk-landscape .step-line {
+    transform: translateY(-11px);
+}
+
+html.kiosk-landscape .session-step {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 18px;
+}
+
+html.kiosk-landscape .step-title {
+    font-size: 36px;
+    margin-bottom: 4px;
+}
+
+html.kiosk-landscape .step-desc {
+    font-size: 19px;
+    margin-bottom: 16px;
+}
+
+html.kiosk-landscape .step-actions {
+    padding-top: 16px;
+}
+
+html.kiosk-landscape .btn-primary,
+html.kiosk-landscape .btn-secondary,
+html.kiosk-landscape .step-actions .btn-primary,
+html.kiosk-landscape .step-actions .btn-secondary {
+    min-height: 76px;
+    padding: 16px 40px;
+    font-size: 22px;
+}
+
+html.kiosk-landscape .btn-back,
+html.kiosk-landscape .btn-secondary-sm {
+    min-height: 56px;
+    font-size: 18px;
+}
+
+/* Menu awal: logo lebih kecil agar tombol tidak mepet bawah. */
+html.kiosk-landscape .menu-screen {
+    padding: 60px 88px;
+}
+
+html.kiosk-landscape .menu-header {
+    margin-top: 40px;
+}
+
+html.kiosk-landscape .menu-logo {
+    width: min(520px, 100%);
+}
+
+/* Langkah 1: lebih banyak pilihan layout per baris. */
+html.kiosk-landscape .layout-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+html.kiosk-landscape #step-layout .step-actions {
+    flex-direction: row;
+    justify-content: center;
+}
+
+html.kiosk-landscape #step-layout .step-actions .btn-back {
+    min-width: 320px;
+}
+
+/* Langkah 2: kamera kiri, template kanan. */
+html.kiosk-landscape .capture-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(320px, 30%, 520px);
+    gap: 28px;
+}
+
+html.kiosk-landscape .capture-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+        "camera camera"
+        "timer  start"
+        "back   retake";
+    column-gap: 16px;
+    row-gap: 14px;
+}
+
+html.kiosk-landscape .capture-main .capture-area {
+    grid-area: camera;
+    justify-content: center;
+}
+
+html.kiosk-landscape .capture-main .timer-palette {
+    grid-area: timer;
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+    padding: 10px 14px;
+}
+
+html.kiosk-landscape .capture-main .timer-palette .palette-title {
+    flex: 0 0 auto;
+    font-size: 16px;
+}
+
+html.kiosk-landscape .capture-main .timer-grid {
+    flex: 1;
+}
+
+html.kiosk-landscape .capture-main .timer-chip {
+    min-height: 54px;
+}
+
+html.kiosk-landscape .capture-main .capture-main-actions {
+    grid-area: start;
+    padding: 0;
+}
+
+html.kiosk-landscape .capture-main .capture-main-actions .btn-primary {
+    height: 100%;
+}
+
+html.kiosk-landscape .capture-main .capture-retake-actions {
+    grid-area: retake;
+    margin: 0;
+}
+
+html.kiosk-landscape .capture-main .capture-retake-actions .btn-secondary {
+    width: 100%;
+    min-height: 56px;
+    padding: 10px 20px;
+    font-size: 18px;
+}
+
+html.kiosk-landscape .capture-main .capture-back-actions {
+    grid-area: back;
+    padding: 0;
+}
+
+html.kiosk-landscape .camera-viewport {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+    border-radius: 24px;
+}
+
+html.kiosk-landscape .pose-indicators {
+    display: none;
+}
+
+html.kiosk-landscape .capture-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+    padding: 18px;
+    border: 1px solid rgba(224, 148, 148, 0.22);
+    border-radius: 26px;
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+/* Langkah 3 sampai cetak: pratinjau kiri, kontrol kanan, tombol berjajar. */
+html.kiosk-landscape .style-workspace {
+    flex: 1;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+}
+
+html.kiosk-landscape .sticker-workspace {
+    flex: 1;
+}
+
+html.kiosk-landscape .decorate-mode-toggle {
+    margin-bottom: 12px;
+}
+
+html.kiosk-landscape .decorate-mode-button {
+    min-height: 56px;
+    font-size: 18px;
+}
+
+html.kiosk-landscape #step-style > .step-actions,
+html.kiosk-landscape #step-stickers > .step-actions,
+html.kiosk-landscape #step-preview > .step-actions,
+html.kiosk-landscape #step-qr > .step-actions,
+html.kiosk-landscape .print-panel > .step-actions {
+    flex-direction: row;
+    justify-content: center;
+}
+
+html.kiosk-landscape #step-style > .step-actions > *,
+html.kiosk-landscape #step-stickers > .step-actions > *,
+html.kiosk-landscape #step-preview > .step-actions > *,
+html.kiosk-landscape #step-qr > .step-actions > *,
+html.kiosk-landscape .print-panel > .step-actions > * {
+    flex: 1 1 0;
+    width: auto;
+    max-width: 520px;
+}
+
+html.kiosk-landscape .preview-area {
+    flex: 1;
+}
+
+html.kiosk-landscape .print-package-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+html.kiosk-landscape .print-package-card:last-child:nth-child(odd) {
+    grid-column: auto;
+}
+
+/* Atur cetakan: kontrol bisa digulir, pratinjau 4R setinggi area. */
+html.kiosk-landscape .print-workspace {
+    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+}
+
+html.kiosk-landscape .print-controls {
+    max-height: 100%;
+}
+
+html.kiosk-landscape .print-source-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+}
+
+html.kiosk-landscape .print-preview {
+    height: 100%;
+    justify-content: center;
+}
+
+html.kiosk-landscape .print-preview canvas {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: calc(100% - 30px);
+}
+
+/* ==========================================================================
+   PEMBAYARAN QRIS + PIN OPERATOR
+   ========================================================================== */
+.print-payment-layout {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+    gap: 28px;
+    min-height: 0;
+}
+
+.print-payment-layout .print-payment-card {
+    margin: 0;
+}
+
+.print-qris {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: min(100%, 440px);
+    padding: 24px;
+    border-radius: 30px;
+    background: #fff;
+    box-shadow: 0 20px 55px rgba(43, 39, 37, 0.14);
+    text-align: center;
+}
+
+.print-qris[hidden] {
+    display: none;
+}
+
+.print-qris img {
+    width: 100%;
+    max-height: 560px;
+    object-fit: contain;
+    border-radius: 14px;
+}
+
+.print-qris span {
+    color: var(--text-muted);
+    font-size: 18px;
+    line-height: 1.4;
+}
+
+.print-pin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin-top: 12px;
+    padding-top: 20px;
+    border-top: 1px dashed rgba(43, 39, 37, 0.2);
+}
+
+.print-pin-form[hidden] {
+    display: none;
+}
+
+.print-pin-form label {
+    color: var(--text-muted);
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.print-pin-form input {
+    width: 100%;
+    padding: 14px 18px;
+    border: 2px solid rgba(43, 39, 37, 0.18);
+    border-radius: 18px;
+    font-size: 30px;
+    letter-spacing: 12px;
+    text-align: center;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.print-pin-form input:focus {
+    outline: none;
+    border-color: var(--secondary);
+}
+
+.print-pin-error {
+    color: #b42318;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.print-pin-error[hidden] {
+    display: none;
+}
+
+html.kiosk-landscape .print-payment-layout {
+    flex: 1;
+    flex-wrap: nowrap;
+}
+
+html.kiosk-landscape .print-payment-layout .print-payment-card {
+    justify-content: center;
+    padding: 32px 36px;
+}
+
+html.kiosk-landscape .print-qris img {
+    max-height: 520px;
+}

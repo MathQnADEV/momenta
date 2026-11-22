@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\PhotoBackground;
 use App\Models\PhotoTemplate;
+use App\Models\SettingsCredential;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -53,11 +54,14 @@ class TemplateSettingsController extends Controller
             'updateUrl' => route('settings.backgrounds.update', $background),
         ])->values();
 
+        $operatorPinSet = filled(SettingsCredential::query()->value('operator_pin_hash'));
+
         return view('settings.index', compact(
             'templates',
             'settingsTemplates',
             'backgrounds',
             'settingsBackgrounds',
+            'operatorPinSet',
         ));
     }
 
