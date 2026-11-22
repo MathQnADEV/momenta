@@ -387,7 +387,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.photo-edit-target').forEach(button => {
             button.classList.toggle('selected', Number(button.dataset.photoIndex) === selectedIndex);
         });
-        updateCanvasZoom();
 
         document.querySelectorAll('[data-photo-background-url]').forEach(button => {
             button.classList.toggle(
@@ -444,6 +443,8 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             button.addEventListener('click', () => {
                 sessionState.selectedPhotoIndex = index;
+                // Saat diperbesar, tampilan pindah ke foto yang baru dipilih.
+                updateCanvasZoom();
                 syncPhotoEditControls();
             });
             photoEditTargetGrid.appendChild(button);

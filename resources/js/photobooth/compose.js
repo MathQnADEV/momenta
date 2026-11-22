@@ -463,7 +463,9 @@ export async function composePhotoStrip(poses, bgStyle) {
             ctx.clip();
         }
 
-        ctx.filter = resolvePhotoFilter(edit.filter, edit.filterCss);
+        // Blur: gambar dulu tanpa filter agar tepi slot tidak tembus pandang.
+        if (edit.filter === "blur") drawAdjustedImage(ctx, photoSource, rect, edit.transform);
+        ctx.filter = resolvePhotoFilter(edit.filter, edit.filterCss, Math.max(rect.w, rect.h));
         drawAdjustedImage(ctx, photoSource, rect, edit.transform);
         ctx.filter = "none";
         ctx.restore();
@@ -567,7 +569,8 @@ export async function renderProcessedPose(index) {
         }
     }
 
-    ctx.filter = resolvePhotoFilter(edit.filter, edit.filterCss);
+    if (edit.filter === "blur") ctx.drawImage(photoSource, 0, 0, canvas.width, canvas.height);
+    ctx.filter = resolvePhotoFilter(edit.filter, edit.filterCss, Math.max(canvas.width, canvas.height));
     ctx.drawImage(photoSource, 0, 0, canvas.width, canvas.height);
     ctx.filter = "none";
 
@@ -737,7 +740,9 @@ function wrapTextLines(ctx, text, maxWidth) {
 }
 
 
-function resolvePhotoFilter(filterId, explicitCss) {
+function resolvePhotoFilter(filterId, explicitCss, size = 1000) {
+    // Besar blur mengikuti ukuran foto agar hasil strip, photocard, dan ganci sama halusnya.
+    if (filterId === "blur") return `blur(${Math.max(2, size * 0.02).toFixed(1)}px)`;
     if (explicitCss && explicitCss !== "none") return explicitCss;
 
     const filters = {
