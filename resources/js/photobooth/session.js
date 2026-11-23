@@ -15,6 +15,7 @@ import {
 } from './doodle.js';
 import { uploadPhotoStrip } from './upload.js';
 import { openPaymentFlow } from './print.js';
+import { showDialog } from './dialog.js';
 import { initCapturePreview, renderCapturePreview } from './capture-preview.js';
 import { initCanvasZoom, resetCanvasZoom, updateCanvasZoom } from './canvas-zoom.js';
 import { initTextLayer, renderTextBoxes, resetTextPositions, setTextLayerEnabled } from './text-layer.js';
@@ -534,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             renderDecorationCanvas().catch(error => {
                 console.error('Gagal menyiapkan halaman hias:', error);
-                alert('Gagal menyiapkan halaman hias. Silakan coba lagi.');
+                showDialog({ title: 'Ada kendala', message: 'Gagal menyiapkan halaman hias. Silakan coba lagi.', tone: 'warning' });
             });
         }
         if (newStep !== 'stickers') setDrawingEnabled(false);
@@ -801,7 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
             goToStep('preview');
         } catch (error) {
             console.error('Gagal memproses hiasan:', error);
-            alert('Gagal memproses hiasan. Silakan coba lagi.');
+            showDialog({ title: 'Ada kendala', message: 'Gagal memproses hiasan. Silakan coba lagi.', tone: 'warning' });
         } finally {
             finishDecorationsButton.disabled = false;
             finishDecorationsButton.textContent = 'Lanjut ke Preview';

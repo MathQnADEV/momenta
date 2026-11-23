@@ -819,17 +819,17 @@ return [
     'print' => [
         'dpi' => 300,
 
-        // Strip = hasil template pelanggan, diulang sebanyak yang muat di kertas foto A4.
-        // Dicetak di printer A4 (Epson L120). L120 tidak bisa tanpa margin, jadi ada tepi putih.
+        // Strip = satu salinan hasil frame pelanggan di kertas foto A4 (Epson L120),
+        // tegak dan mengikuti bentuk frame. L120 tidak bisa tanpa margin, jadi ada tepi putih.
         'strip' => [
             'paper' => ['name' => 'A4', 'width_mm' => 210, 'height_mm' => 297],
             'margin_mm' => 5,
-            'gap_mm' => 4,
-            // Panjang sisi terpanjang tiap template di kertas (150 mm ≈ photostrip 2×6 inci).
-            'long_side_mm' => (float) env('PHOTOBOOTH_STRIP_LONG_SIDE_MM', 150),
+            // 0 = sebesar mungkin di A4. Isi angka (mm) untuk panjang sisi terpanjang yang tetap.
+            'long_side_mm' => (float) env('PHOTOBOOTH_STRIP_LONG_SIDE_MM', 0),
         ],
 
         // Ganci akrilik 2 sisi, dicetak di Canon SELPHY (kertas 4R).
+        // Isi ganci mengikuti bentuk frame dan dimuatkan ke kotak lebar × tinggi ini.
         // Ukuran akrilik belum pasti: ubah lewat .env bila sudah diketahui.
         'keychain' => [
             'paper' => ['name' => '4R', 'width_mm' => 100, 'height_mm' => 148],
