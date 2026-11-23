@@ -5557,8 +5557,8 @@ html.kiosk-landscape .print-preview canvas {
 .print-sheet-previews {
     display: flex;
     justify-content: center;
-    align-items: flex-start;
-    gap: 18px;
+    align-items: stretch;
+    gap: 24px;
     width: 100%;
     min-height: 0;
     flex: 1;
@@ -5568,35 +5568,41 @@ html.kiosk-landscape .print-preview canvas {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    flex: 1 1 0;
     min-width: 0;
-    height: 100%;
+    min-height: 0;
     margin: 0;
 }
 
-.print-preview .print-sheet-figure canvas {
-    width: auto;
-    max-width: 100%;
-    height: calc(100% - 34px);
+/* Kotak setinggi area; kanvas dimuatkan utuh tanpa diputar atau dipotong. */
+.print-preview .print-sheet-figure canvas,
+html.kiosk-landscape .print-preview .print-sheet-figure canvas {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    height: auto;
     max-height: none;
     aspect-ratio: auto;
     object-fit: contain;
-    border-radius: 8px;
-    background: #fff;
-    box-shadow: 0 14px 32px rgba(43, 39, 37, 0.16);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    filter: drop-shadow(0 14px 28px rgba(43, 39, 37, 0.18));
 }
 
 .print-sheet-figure figcaption {
     color: var(--text-muted);
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 700;
+    text-align: center;
 }
 
 .print-done-layout {
     display: flex;
     justify-content: center;
     align-items: stretch;
-    gap: 28px;
+    gap: 32px;
     flex: 1;
     min-height: 0;
 }
@@ -5607,15 +5613,15 @@ html.kiosk-landscape .print-preview canvas {
     align-items: center;
     justify-content: center;
     gap: 14px;
+    flex: 0 0 auto;
 }
 
 .print-done-sheets {
     display: flex;
-    flex-direction: column;
-    gap: 16px;
+    gap: 24px;
+    flex: 1 1 0;
     min-width: 0;
     min-height: 0;
-    overflow-y: auto;
 }
 
 .print-done-sheets[hidden] {
@@ -5624,26 +5630,36 @@ html.kiosk-landscape .print-preview canvas {
 
 .print-done-sheet {
     display: flex;
-    align-items: center;
-    gap: 18px;
-    padding: 16px;
-    border-radius: 22px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    padding: 18px;
+    border-radius: 24px;
     background: #fff;
     box-shadow: 0 12px 30px rgba(43, 39, 37, 0.1);
 }
 
 .print-done-sheet canvas {
-    width: auto;
-    height: 220px;
-    border-radius: 6px;
-    box-shadow: 0 6px 16px rgba(43, 39, 37, 0.15);
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 18px rgba(43, 39, 37, 0.16));
 }
 
 .print-done-sheet-info {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
-    min-width: 260px;
+}
+
+.print-done-sheet-info strong,
+.print-done-sheet-info span {
+    grid-column: 1 / -1;
+    text-align: center;
 }
 
 .print-done-sheet-info strong {
@@ -5658,8 +5674,112 @@ html.kiosk-landscape .print-preview canvas {
 .print-done-sheet-info .btn-primary,
 .print-done-sheet-info .btn-secondary {
     min-height: 60px;
-    padding: 10px 24px;
+    padding: 10px 16px;
     font-size: 19px;
+}
+
+/* Paket tanpa cetakan: QR saja di tengah. */
+.print-panel[data-print-stage="done"]:not(.has-sheets) .print-done-qr {
+    flex: 1;
+}
+
+html.kiosk-landscape .print-workspace {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+}
+
+/* ==========================================================================
+   POP-UP MOMENTA
+   ========================================================================== */
+.momenta-dialog-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    padding: 40px;
+    background: rgba(43, 39, 37, 0.45);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.momenta-dialog-overlay.is-open {
+    opacity: 1;
+}
+
+.momenta-dialog {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: min(100%, 560px);
+    padding: 36px 40px 32px;
+    border-radius: 32px;
+    background: linear-gradient(180deg, #fffdf9 0%, #fbf3ee 100%);
+    box-shadow: 0 30px 80px rgba(43, 39, 37, 0.35);
+    text-align: center;
+    transform: translateY(16px) scale(0.96);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.momenta-dialog-overlay.is-open .momenta-dialog {
+    transform: none;
+}
+
+.momenta-dialog-logo {
+    width: 150px;
+    height: auto;
+    margin-bottom: 4px;
+}
+
+.momenta-dialog-title {
+    margin: 0;
+    color: var(--primary);
+    font-size: 30px;
+    font-weight: 800;
+}
+
+.momenta-dialog-message {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 20px;
+    line-height: 1.45;
+}
+
+.momenta-dialog-actions {
+    display: flex;
+    gap: 14px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.momenta-dialog-button {
+    flex: 1;
+    min-height: 68px;
+    padding: 12px 20px;
+    border: 0;
+    border-radius: 20px;
+    font: inherit;
+    font-size: 21px;
+    font-weight: 800;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.momenta-dialog-button--primary {
+    background: linear-gradient(135deg, #2b2725, #4a403b);
+    color: #fff;
+    box-shadow: 0 12px 26px rgba(43, 39, 37, 0.28);
+}
+
+.momenta-dialog--warning .momenta-dialog-button--primary {
+    background: linear-gradient(135deg, #b9636c, #d4848b);
+}
+
+.momenta-dialog-button--secondary {
+    background: #fff;
+    color: var(--primary);
+    border: 2px solid rgba(43, 39, 37, 0.15);
 }
 
 html.kiosk-landscape .print-package-list {

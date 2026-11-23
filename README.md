@@ -40,8 +40,8 @@ Setelah Preview, pelanggan menekan **Simpan & Pilih Paket**. Foto langsung diung
 | Paket B | Foto + soft file + ganci akrilik 2 sisi | Rp15.000 |
 | Paket C | Foto + soft file + strip + ganci akrilik | Rp20.000 |
 
-- **Strip**: hasil template pelanggan dicetak di kertas foto **A4** (Epson L120), diulang sebanyak yang muat dengan garis potong. Sisi terpanjang tiap salinan 150 mm (ubah lewat `PHOTOBOOTH_STRIP_LONG_SIDE_MM`). L120 tidak bisa cetak tanpa margin, jadi lembar diberi tepi putih 5 mm.
-- **Ganci**: depan dan belakang (foto atau kutipan) dicetak di kertas **4R** untuk Canon SELPHY. Ukuran akrilik diatur lewat `PHOTOBOOTH_KEYCHAIN_WIDTH_MM` dan `PHOTOBOOTH_KEYCHAIN_HEIGHT_MM` (default 28 × 40 mm).
+- **Strip**: satu salinan hasil frame pelanggan dicetak tegak di kertas foto **A4** (Epson L120) dengan garis potong, sebesar mungkin sesuai bentuk frame. Untuk ukuran tetap, isi `PHOTOBOOTH_STRIP_LONG_SIDE_MM` (panjang sisi terpanjang dalam mm). L120 tidak bisa cetak tanpa margin, jadi lembar diberi tepi putih 5 mm.
+- **Ganci**: sisi depan memakai hasil frame (atau satu foto), sisi belakang berisi kutipan di dalam frame yang sama (atau foto). Dicetak di kertas **4R** untuk Canon SELPHY. Isi ganci mengikuti bentuk frame dan dimuatkan ke ukuran akrilik `PHOTOBOOTH_KEYCHAIN_WIDTH_MM` × `PHOTOBOOTH_KEYCHAIN_HEIGHT_MM` (default 28 × 40 mm).
 - Saat mencetak pilih printer yang sesuai, ukuran kertas sesuai lembar (A4 atau 4R), dan skala 100%.
 
 Harga dan isi paket diatur di `config/photobooth.php` bagian `print`.

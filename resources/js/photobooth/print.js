@@ -1,6 +1,7 @@
 import { sessionState } from './state.js';
-import { renderProcessedPose, findPersonFocus } from './compose.js';
+import { composePhotoStrip, findPersonFocus, getLayoutPhotoBounds, renderProcessedPose } from './compose.js';
 import { uploadPhotoStrip } from './upload.js';
+import { showDialog } from './dialog.js';
 
 /*
  * Alur setelah Preview: pilih paket → (atur cetakan) → bayar → QR soft file + cetak.
@@ -21,9 +22,9 @@ const FONT = '"Outfit", sans-serif';
 const printState = {
     stage: 'package',
     packageCode: null,
-    keychainFront: 0,
-    keychainBackMode: 'photo',
-    keychainBack: 1,
+    keychainFront: 'final',
+    keychainBackMode: 'quote',
+    keychainBack: 'final',
     keychainQuote: '',
     order: null,
     sheets: [],
@@ -61,10 +62,6 @@ function packageHas(item) {
 
 function hasPrintItems() {
     return (currentPackage()?.items || []).length > 0;
-}
-
-function poseCount() {
-    return sessionState.poses.filter(Boolean).length;
 }
 
 function el(tag, attrs = {}, children = []) {
@@ -157,80 +154,121 @@ function wrapLines(ctx, text, maxWidth, maxLines) {
 
 // ── Ganci akrilik ────────────────────────────────────────────────────────────
 
+/**
+ * Ukuran isi ganci: mengikuti bentuk frame, dimuatkan ke kotak ukuran akrilik.
+ */
 function keychainSize() {
     const size = printConfig().keychain || {};
-    return { W: mmToPx(size.width_mm || 28), H: mmToPx(size.height_mm || 40) };
+    const boxW = mmToPx(size.width_mm || 28);
+    const boxH = mmToPx(size.height_mm || 40);
+    if (!finalImageCanvas?.width) return { W: boxW, H: boxH };
+
+    const scale = Math.min(boxW / finalImageCanvas.width, boxH / finalImageCanvas.height);
+    return {
+        W: Math.round(finalImageCanvas.width * scale),
+        H: Math.round(finalImageCanvas.height * scale),
+    };
 }
 
-async function renderKeychainPhoto(index) {
+function keychainCanvas() {
     const { W, H } = keychainSize();
     const canvas = el('canvas');
     canvas.width = W;
     canvas.height = H;
     const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    return { canvas, ctx, W, H };
+}
+
+/** Hasil frame lengkap (foto + frame + stiker), sama seperti soft file. */
+function renderKeychainFramed() {
+    const { canvas, ctx, W, H } = keychainCanvas();
+    ctx.drawImage(finalImageCanvas, 0, 0, W, H);
+    return canvas;
+}
+
+/** Satu foto saja, dipotong mengikuti posisi orang. */
+async function renderKeychainPhoto(index) {
+    const { canvas, ctx, W, H } = keychainCanvas();
     ctx.fillStyle = CREAM;
     ctx.fillRect(0, 0, W, H);
 
     const img = await processedPose(index);
     const focus = await personFocus(index);
-    // Close-up: tinggi crop sekitar 70% tinggi orang agar wajah memenuhi sisipan.
     const zoom = focus ? Math.max(0.35, Math.min(1, focus.height * 0.7)) : 1;
     drawFocusedCover(ctx, img, 0, 0, W, H, focus, zoom);
     return canvas;
 }
 
+/**
+ * Kutipan bergaya frame: frame yang sama dengan foto pelanggan, tetapi area
+ * foto diganti panel kutipan.
+ */
 async function renderKeychainQuote() {
-    const { W, H } = keychainSize();
-    const canvas = el('canvas');
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext('2d');
+    // composePhotoStrip menyimpan hasilnya ke sessionState; kembalikan setelahnya.
+    const previous = sessionState.compositeCanvas;
+    let frame;
+    try {
+        frame = await composePhotoStrip(sessionState.poses.map(() => null), sessionState.bgStyle);
+    } finally {
+        sessionState.compositeCanvas = previous;
+    }
+
+    const ctx = frame.getContext('2d');
+    const bounds = getLayoutPhotoBounds(sessionState.layoutId);
+    const sx = frame.width / bounds.canvasW;
+    const sy = frame.height / bounds.canvasH;
+    const box = { x: bounds.x * sx, y: bounds.y * sy, w: bounds.w * sx, h: bounds.h * sy };
 
     ctx.fillStyle = CREAM_DEEP;
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(box.x, box.y, box.w, box.h);
     ctx.strokeStyle = 'rgba(185, 99, 108, 0.55)';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(10, 10, W - 20, H - 20);
+    ctx.lineWidth = Math.max(2, box.w * 0.012);
+    const inset = box.w * 0.05;
+    ctx.strokeRect(box.x + inset, box.y + inset, box.w - inset * 2, box.h - inset * 2);
 
-    const pad = Math.round(W * 0.12);
-    const maxWidth = W - pad * 2;
+    const pad = box.w * 0.14;
+    const maxWidth = box.w - pad * 2;
     const quote = printState.keychainQuote.trim() || 'Setiap momen layak dikenang.';
+    const centerX = box.x + box.w / 2;
 
-    ctx.fillStyle = ROSE;
     ctx.textAlign = 'center';
-    ctx.font = `700 ${Math.round(W * 0.2)}px Georgia, serif`;
-    ctx.fillText('“', W / 2, pad + Math.round(W * 0.14));
-
-    let fontSize = Math.round(W * 0.095);
+    let fontSize = Math.round(Math.min(box.w * 0.11, box.h * 0.08));
     let lines;
     do {
         ctx.font = `600 ${fontSize}px ${FONT}`;
-        lines = wrapLines(ctx, quote, maxWidth, 7);
+        lines = wrapLines(ctx, quote, maxWidth, 8);
         fontSize -= 1;
-    } while (lines.length * fontSize * 1.3 > H * 0.52 && fontSize > 14);
+    } while (lines.length * fontSize * 1.3 > box.h * 0.5 && fontSize > 10);
 
-    const lineH = Math.round(fontSize * 1.3);
-    let y = Math.round(H * 0.44 - ((lines.length - 1) * lineH) / 2);
+    const lineH = fontSize * 1.3;
+    const quoteMarkSize = fontSize * 2.2;
+    let y = box.y + box.h * 0.45 - ((lines.length - 1) * lineH) / 2;
+
+    ctx.fillStyle = ROSE;
+    ctx.font = `700 ${quoteMarkSize}px Georgia, serif`;
+    ctx.fillText('“', centerX, y - lineH * 0.6);
+
     ctx.fillStyle = INK;
+    ctx.font = `600 ${fontSize}px ${FONT}`;
     lines.forEach(line => {
-        ctx.fillText(line, W / 2, y);
+        ctx.fillText(line, centerX, y + lineH * 0.6);
         y += lineH;
     });
 
-    // Logo dan tanggal disusun dari tepi bawah agar tidak terpotong.
-    const logo = await loadLogo();
-    let footerY = H - Math.round(pad * 0.55);
-    if (logo) {
-        const logoW = W * 0.4;
-        const logoH = logoW * (logo.height / logo.width);
-        footerY -= logoH;
-        ctx.drawImage(logo, (W - logoW) / 2, footerY, logoW, logoH);
-    }
-
     ctx.fillStyle = INK_MUTED;
-    ctx.font = `500 ${Math.round(W * 0.052)}px ${FONT}`;
-    ctx.fillText(todayLabel(), W / 2, footerY - Math.round(W * 0.03));
+    ctx.font = `500 ${Math.round(fontSize * 0.6)}px ${FONT}`;
+    ctx.fillText(todayLabel(), centerX, box.y + box.h - inset - pad * 0.4);
+
+    const { canvas, ctx: out, W, H } = keychainCanvas();
+    out.drawImage(frame, 0, 0, W, H);
     return canvas;
+}
+
+async function renderKeychainSide(choice) {
+    if (choice === 'quote') return renderKeychainQuote();
+    if (choice === 'final' && finalImageCanvas) return renderKeychainFramed();
+    return renderKeychainPhoto(Number(choice) || 0);
 }
 
 // ── Lembar cetak ─────────────────────────────────────────────────────────────
@@ -273,45 +311,21 @@ function drawSheetFooter(ctx, sheet, label, bottomMm) {
 }
 
 /**
- * Susunan template di A4: ukuran tiap salinan mengikuti rasio template
- * (sisi terpanjang = long_side_mm), lalu dipilih posisi tegak atau diputar
- * yang menghasilkan salinan terbanyak.
+ * Satu salinan template di kertas A4, tegak (tidak diputar) dan mengikuti
+ * bentuk frame. Bila long_side_mm diisi, sisi terpanjang dibuat sepanjang itu;
+ * bila kosong, template diperbesar sebesar mungkin di area cetak.
  */
 export function planStripLayout(templateW, templateH, config) {
     const paper = config.paper || { width_mm: 210, height_mm: 297 };
     const margin = config.margin_mm ?? 5;
-    const gap = config.gap_mm ?? 4;
-    const longSide = config.long_side_mm || 150;
     const usableW = paper.width_mm - margin * 2;
     const usableH = paper.height_mm - margin * 2;
 
-    const portrait = templateH >= templateW;
-    let itemW = portrait ? (longSide * templateW) / templateH : longSide;
-    let itemH = portrait ? longSide : (longSide * templateH) / templateW;
+    let scale = Math.min(usableW / templateW, usableH / templateH);
+    const longSide = Number(config.long_side_mm) || 0;
+    if (longSide > 0) scale = Math.min(scale, longSide / Math.max(templateW, templateH));
 
-    const fit = (w, h) => ({
-        cols: Math.floor((usableW + gap) / (w + gap)),
-        rows: Math.floor((usableH + gap) / (h + gap)),
-    });
-
-    let best = null;
-    [false, true].forEach(rotated => {
-        const w = rotated ? itemH : itemW;
-        const h = rotated ? itemW : itemH;
-        const { cols, rows } = fit(w, h);
-        const count = cols * rows;
-        if (count > 0 && (!best || count > best.count)) best = { rotated, w, h, cols, rows, count };
-    });
-
-    // Template terlalu besar untuk ukuran ini: perkecil agar tetap muat satu.
-    if (!best) {
-        const scale = Math.min(usableW / itemW, usableH / itemH);
-        itemW *= scale;
-        itemH *= scale;
-        best = { rotated: false, w: itemW, h: itemH, cols: 1, rows: 1, count: 1 };
-    }
-
-    return { ...best, paper, margin, gap };
+    return { paper, margin, w: templateW * scale, h: templateH * scale };
 }
 
 async function renderStripSheet() {
@@ -321,40 +335,29 @@ async function renderStripSheet() {
 
     const w = mmToPx(plan.w);
     const h = mmToPx(plan.h);
-    const gap = mmToPx(plan.gap);
-    const gridW = plan.cols * w + (plan.cols - 1) * gap;
-    const gridH = plan.rows * h + (plan.rows - 1) * gap;
-    const startX = Math.round((sheet.width - gridW) / 2);
-    const startY = Math.round((sheet.height - gridH) / 2);
+    const x = Math.round((sheet.width - w) / 2);
+    const y = Math.round((sheet.height - h) / 2);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(finalImageCanvas, x, y, w, h);
+    drawCropMarks(ctx, { x, y, w, h });
 
-    for (let row = 0; row < plan.rows; row += 1) {
-        for (let col = 0; col < plan.cols; col += 1) {
-            const x = startX + col * (w + gap);
-            const y = startY + row * (h + gap);
-            ctx.save();
-            if (plan.rotated) {
-                ctx.translate(x, y + h);
-                ctx.rotate(-Math.PI / 2);
-                ctx.drawImage(finalImageCanvas, 0, 0, h, w);
-            } else {
-                ctx.drawImage(finalImageCanvas, x, y, w, h);
-            }
-            ctx.restore();
-            drawCropMarks(ctx, { x, y, w, h });
-        }
-    }
-
-    drawSheetFooter(ctx, sheet, `Strip ${plan.count}×`, Math.max(1.5, plan.margin / 2 - 0.5));
-    return { key: 'strip', label: 'Strip (A4)', paper: plan.paper, canvas: sheet, copies: plan.count };
+    drawSheetFooter(ctx, sheet, 'Strip', Math.max(1.5, plan.margin / 2 - 0.5));
+    return {
+        key: 'strip',
+        label: 'Strip (A4)',
+        paper: plan.paper,
+        canvas: sheet,
+        sizeLabel: `${(plan.w / 10).toFixed(1)} × ${(plan.h / 10).toFixed(1)} cm`,
+    };
 }
 
 async function renderKeychainSheet() {
     const paper = printConfig().keychain?.paper || { width_mm: 100, height_mm: 148 };
     const { sheet, ctx } = blankSheet(paper);
-    const front = await renderKeychainPhoto(printState.keychainFront);
-    const back = printState.keychainBackMode === 'quote'
-        ? await renderKeychainQuote()
-        : await renderKeychainPhoto(printState.keychainBack);
+    const front = await renderKeychainSide(printState.keychainFront);
+    const back = await renderKeychainSide(
+        printState.keychainBackMode === 'quote' ? 'quote' : printState.keychainBack,
+    );
 
     const gap = mmToPx(6);
     const totalW = front.width + back.width + gap;
@@ -374,7 +377,14 @@ async function renderKeychainSheet() {
     ctx.fillText('Belakang', Math.round((sheet.width - totalW) / 2) + front.width + gap + back.width / 2, y - mmToPx(5));
 
     drawSheetFooter(ctx, sheet, 'Ganci', 3);
-    return { key: 'keychain', label: 'Ganci (4R)', paper, canvas: sheet };
+    const cm = px => ((px * 2.54) / (printConfig().dpi || 300)).toFixed(1);
+    return {
+        key: 'keychain',
+        label: 'Ganci (4R)',
+        paper,
+        canvas: sheet,
+        sizeLabel: `${cm(front.width)} × ${cm(front.height)} cm per sisi`,
+    };
 }
 
 async function renderSheets() {
@@ -395,7 +405,7 @@ function renderSheetPreviews(container, sheets) {
     container.replaceChildren(...sheets.map(sheet => {
         const canvas = el('canvas', { 'aria-label': `Pratinjau ${sheet.label}` });
         paintCanvas(canvas, sheet.canvas);
-        const caption = sheet.copies ? `${sheet.label} · ${sheet.copies} salinan` : sheet.label;
+        const caption = sheet.sizeLabel ? `${sheet.label} · ${sheet.sizeLabel}` : sheet.label;
         return el('figure', { class: 'print-sheet-figure' }, [canvas, el('figcaption', { text: caption })]);
     }));
 }
@@ -459,6 +469,10 @@ function sourcePicker(current, onChange) {
     const options = sessionState.poses
         .map((pose, index) => (pose ? { value: index, label: `Foto ${index + 1}`, image: pose } : null))
         .filter(Boolean);
+    // Pilihan utama: hasil frame lengkap yang sama dengan soft file.
+    if (finalImageCanvas) {
+        options.unshift({ value: 'final', label: 'Dengan Frame', image: finalImageCanvas.toDataURL('image/jpeg', 0.6) });
+    }
 
     return el('div', { class: 'print-source-grid' }, options.map(option => el('button', {
         type: 'button',
@@ -485,7 +499,7 @@ function renderControls() {
             el('h3', { text: 'Cetak Strip' }),
             el('p', {
                 class: 'print-hint',
-                text: `Hasil template kamu dicetak di kertas foto ${config.paper?.name || 'A4'}, diulang sebanyak yang muat, lalu dipotong mengikuti garis sudut.`,
+                text: `Hasil frame kamu dicetak satu kali di kertas foto ${config.paper?.name || 'A4'}, lalu dipotong mengikuti garis sudut.`,
             }),
         ]));
     }
@@ -500,7 +514,7 @@ function renderControls() {
 
         group.append(el('p', { class: 'print-label', text: 'Sisi belakang' }));
         group.append(segmented(
-            [['photo', 'Foto'], ['quote', 'Kutipan']],
+            [['photo', 'Foto'], ['quote', 'Kutipan Bergaya Frame']],
             printState.keychainBackMode,
             value => { printState.keychainBackMode = value; rerender(); },
         ));
@@ -532,9 +546,9 @@ function choosePackage(code) {
     printState.packageCode = code;
     printState.order = null;
     printState.sheets = [];
-    const lastPose = Math.max(0, poseCount() - 1);
-    printState.keychainFront = 0;
-    printState.keychainBack = Math.min(1, lastPose);
+    printState.keychainFront = 'final';
+    printState.keychainBackMode = 'quote';
+    printState.keychainBack = 'final';
 
     // Soft File saja: tidak ada yang perlu diatur, langsung bayar.
     if (!hasPrintItems()) {
@@ -613,7 +627,7 @@ async function goToPayment() {
 
     try {
         if (!(await ensureUploaded())) {
-            alert('Foto belum berhasil diunggah. Periksa koneksi internet lalu coba lagi.');
+            showDialog({ title: 'Ada kendala', message: 'Foto belum berhasil diunggah. Periksa koneksi internet lalu coba lagi.', tone: 'warning' });
             return;
         }
         printState.order = await apiRequest(window.PHOTOBOOTH_CONFIG.printOrdersUrl, 'POST', {
@@ -627,7 +641,7 @@ async function goToPayment() {
         if (!['simulation', 'qris_static'].includes(printState.order.payment_driver)) startPolling();
     } catch (error) {
         console.error('Gagal membuat pesanan:', error);
-        alert('Gagal membuat tagihan. Periksa koneksi lalu coba lagi.');
+        showDialog({ title: 'Ada kendala', message: 'Gagal membuat tagihan. Periksa koneksi lalu coba lagi.', tone: 'warning' });
     } finally {
         if (button) {
             button.disabled = false;
@@ -669,7 +683,7 @@ function renderDoneSheets() {
             el('div', { class: 'print-done-sheet-info' }, [
                 el('strong', { text: sheet.label }),
                 el('span', { text: `${printer} · skala 100%` }),
-                el('button', { type: 'button', class: 'btn-primary', onclick: () => printSheet(sheet) }, [`Cetak ${sheet.label}`]),
+                el('button', { type: 'button', class: 'btn-primary', onclick: () => printSheet(sheet) }, ['Cetak']),
                 el('button', { type: 'button', class: 'btn-secondary', onclick: () => downloadSheet(sheet) }, ['Unduh']),
             ]),
         ]);
@@ -697,7 +711,7 @@ async function simulatePayment() {
         if (printState.order.status === 'paid') await onPaid();
     } catch (error) {
         console.error('Gagal mengonfirmasi pembayaran:', error);
-        alert('Konfirmasi pembayaran gagal. Silakan coba lagi.');
+        showDialog({ title: 'Ada kendala', message: 'Konfirmasi pembayaran gagal. Silakan coba lagi.', tone: 'warning' });
     } finally {
         button.disabled = false;
     }
@@ -813,9 +827,16 @@ export function openPaymentFlow() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('btn-print-exit')?.addEventListener('click', () => {
+    document.getElementById('btn-print-exit')?.addEventListener('click', async () => {
         // Foto tetap tersimpan di server, tapi QR tidak ditampilkan.
-        if (!window.confirm('Selesai tanpa membeli? QR soft file tidak akan ditampilkan.')) return;
+        const leave = await showDialog({
+            title: 'Selesai tanpa membeli?',
+            message: 'Foto tetap tersimpan, tetapi QR untuk mengunduh soft file tidak akan ditampilkan.',
+            confirmText: 'Ya, Selesai',
+            cancelText: 'Pilih Paket',
+            tone: 'warning',
+        });
+        if (!leave) return;
         stopPolling();
         window.location.assign(window.PHOTOBOOTH_CONFIG?.homeUrl || '/photobooth');
     });
