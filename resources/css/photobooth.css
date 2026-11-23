@@ -5517,10 +5517,6 @@ html.kiosk-landscape .preview-area {
     flex: 1;
 }
 
-html.kiosk-landscape .print-package-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 html.kiosk-landscape .print-package-card:last-child:nth-child(odd) {
     grid-column: auto;
 }
@@ -5549,6 +5545,125 @@ html.kiosk-landscape .print-preview canvas {
     height: auto;
     max-width: 100%;
     max-height: calc(100% - 30px);
+}
+
+/* ==========================================================================
+   PAKET SOFT FILE / STRIP / GANCI DAN HALAMAN SELESAI
+   ========================================================================== */
+.print-package-card--basic {
+    background: #fffaf6;
+}
+
+.print-sheet-previews {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 18px;
+    width: 100%;
+    min-height: 0;
+    flex: 1;
+}
+
+.print-sheet-figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    height: 100%;
+    margin: 0;
+}
+
+.print-preview .print-sheet-figure canvas {
+    width: auto;
+    max-width: 100%;
+    height: calc(100% - 34px);
+    max-height: none;
+    aspect-ratio: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 14px 32px rgba(43, 39, 37, 0.16);
+}
+
+.print-sheet-figure figcaption {
+    color: var(--text-muted);
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.print-done-layout {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    gap: 28px;
+    flex: 1;
+    min-height: 0;
+}
+
+.print-done-qr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+}
+
+.print-done-sheets {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.print-done-sheets[hidden] {
+    display: none;
+}
+
+.print-done-sheet {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 16px;
+    border-radius: 22px;
+    background: #fff;
+    box-shadow: 0 12px 30px rgba(43, 39, 37, 0.1);
+}
+
+.print-done-sheet canvas {
+    width: auto;
+    height: 220px;
+    border-radius: 6px;
+    box-shadow: 0 6px 16px rgba(43, 39, 37, 0.15);
+}
+
+.print-done-sheet-info {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 260px;
+}
+
+.print-done-sheet-info strong {
+    font-size: 22px;
+}
+
+.print-done-sheet-info span {
+    color: var(--text-muted);
+    font-size: 16px;
+}
+
+.print-done-sheet-info .btn-primary,
+.print-done-sheet-info .btn-secondary {
+    min-height: 60px;
+    padding: 10px 24px;
+    font-size: 19px;
+}
+
+html.kiosk-landscape .print-package-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 /* ==========================================================================

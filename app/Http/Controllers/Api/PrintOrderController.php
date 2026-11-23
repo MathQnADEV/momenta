@@ -26,13 +26,12 @@ class PrintOrderController extends Controller
 
         $validated = $request->validate([
             'package_code' => ['required', 'string', Rule::in(array_keys($packages))],
-            'photo_slug' => ['nullable', 'string', 'max:32'],
+            // Setiap paket termasuk soft file, jadi pesanan selalu terhubung ke satu foto.
+            'photo_slug' => ['required', 'string', 'max:32', Rule::exists('photos', 'slug')],
         ]);
 
         $package = $packages[$validated['package_code']];
-        $photoId = isset($validated['photo_slug'])
-            ? Photo::where('slug', $validated['photo_slug'])->value('id')
-            : null;
+        $photoId = Photo::where('slug', $validated['photo_slug'])->value('id');
 
         $order = PrintOrder::create([
             'invoice_number' => $this->generateInvoiceNumber(),
@@ -69,11 +68,7 @@ class PrintOrderController extends Controller
         $order = PrintOrder::where('invoice_number', $invoice)->firstOrFail();
 
         if ($order->status === 'pending') {
-            $order->update([
-                'status' => 'paid',
-                'payment_reference' => 'SIM-'.Str::upper(Str::random(10)),
-                'paid_at' => now(),
-            ]);
+            $this->markPaid($order, 'SIM-'.Str::upper(Str::random(10)));
         }
 
         return response()->json($order->toPayload());
@@ -108,14 +103,27 @@ class PrintOrderController extends Controller
         $order = PrintOrder::where('invoice_number', $invoice)->firstOrFail();
 
         if ($order->status === 'pending') {
-            $order->update([
-                'status' => 'paid',
-                'payment_reference' => 'QRIS-OP-'.now()->format('His').'-'.Str::upper(Str::random(4)),
-                'paid_at' => now(),
-            ]);
+            $this->markPaid($order, 'QRIS-OP-'.now()->format('His').'-'.Str::upper(Str::random(4)));
         }
 
         return response()->json($order->toPayload());
+    }
+
+    /**
+     * Tandai lunas, lalu buka soft file: masa berlaku link dihitung ulang dari
+     * saat bayar agar pelanggan tetap punya waktu penuh untuk mengunduh.
+     */
+    private function markPaid(PrintOrder $order, string $reference): void
+    {
+        $order->update([
+            'status' => 'paid',
+            'payment_reference' => $reference,
+            'paid_at' => now(),
+        ]);
+
+        $order->photo?->update([
+            'expires_at' => now()->addMinutes((int) config('photobooth.retention_minutes', 10)),
+        ]);
     }
 
     private function generateInvoiceNumber(): string

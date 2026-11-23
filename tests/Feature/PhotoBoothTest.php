@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Photo;
+use App\Models\PrintOrder;
 use App\Models\PsdUnit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -99,6 +100,20 @@ class PhotoBoothTest extends TestCase
             'status' => 'active',
             'file_size' => 1024,
             'expires_at' => now()->addDays(7),
+        ]);
+
+        // Soft file terkunci sampai dibayar.
+        $this->get("/foto/{$photo->slug}")->assertNotFound();
+
+        PrintOrder::create([
+            'invoice_number' => 'MMT-TEST-000001',
+            'photo_id' => $photo->id,
+            'package_code' => 'S',
+            'package_name' => 'Soft File',
+            'amount' => 8000,
+            'status' => 'paid',
+            'payment_driver' => 'simulation',
+            'paid_at' => now(),
         ]);
 
         $response = $this->get("/foto/{$photo->slug}");

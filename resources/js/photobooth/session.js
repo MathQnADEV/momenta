@@ -14,7 +14,7 @@ import {
     flattenDrawingToCanvas,
 } from './doodle.js';
 import { uploadPhotoStrip } from './upload.js';
-import { openPrintFlow } from './print.js';
+import { openPaymentFlow } from './print.js';
 import { initCapturePreview, renderCapturePreview } from './capture-preview.js';
 import { initCanvasZoom, resetCanvasZoom, updateCanvasZoom } from './canvas-zoom.js';
 import { initTextLayer, renderTextBoxes, resetTextPositions, setTextLayerEnabled } from './text-layer.js';
@@ -811,15 +811,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-back-stickers')?.addEventListener('click', () => goToStep('stickers'));
 
     const saveButton = document.getElementById('btn-save-photo');
-    saveButton?.addEventListener('click', async () => {
+    saveButton?.addEventListener('click', () => {
+        // Foto diunggah di latar belakang sambil pelanggan memilih paket.
+        // QR soft file baru ditampilkan setelah pembayaran lunas.
         saveButton.disabled = true;
-        goToStep('qr');
-        await uploadPhotoStrip();
-        saveButton.disabled = false;
-    });
-
-    document.getElementById('btn-open-print')?.addEventListener('click', () => {
         goToStep('print');
-        openPrintFlow({ onExit: () => goToStep('qr') });
+        openPaymentFlow();
+        sessionState.uploadPromise = uploadPhotoStrip();
+        sessionState.uploadPromise.finally(() => { saveButton.disabled = false; });
     });
 });
