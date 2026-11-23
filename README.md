@@ -40,19 +40,19 @@ Setelah Preview, pelanggan menekan **Simpan & Pilih Paket**. Foto langsung diung
 | Paket B | Foto + soft file + ganci akrilik 2 sisi | Rp15.000 |
 | Paket C | Foto + soft file + cetak foto + ganci akrilik | Rp20.000 |
 
-- **Cetak foto** (photostrip / photo card): hasil frame pelanggan dicetak di kertas foto **A4** (Epson L120) dengan garis potong. Ukurannya mengikuti tabel `item_sizes` di `config/photobooth.php` berdasarkan **baris × kolom** layout (Grid 2x3 = 2 baris × 3 kolom, Template Hijau = 4 baris × 2 kolom); arah tegak/melebar mengikuti frame, dan frame dimuat utuh (sisa jadi tepi putih).
+- **Cetak foto** (photostrip / photo card): hasil frame pelanggan dicetak di kertas foto **A4** (Epson L120) dengan garis potong. Ukurannya mengikuti tabel `item_sizes` di `config/photobooth.php` berdasarkan **kolom × baris** layout (2 Foto Samping = 2×1, Strip 3 Pose = 1×3, Template Hijau = 2×4; bila tidak ada di tabel dicoba kebalikannya). Arah tegak/melebar mengikuti frame, dan frame dimuat utuh (sisa jadi tepi putih).
 
-  | Baris × kolom | Ukuran | Jenis |
-  |---|---|---|
-  | 1×1, 2×2, 3×3, 3×2 | 10 × 10 cm | Photo card |
-  | 1×2, 1×3, 2×3, 4×2 | 5 × 10 cm | Photostrip |
-  | 2×1 | 10 × 5 cm | Photo card |
-  | 3×1 | 10 × 4 cm | Photo card |
-  | 4×1 | 10 × 3,5 cm | Photo card |
-  | 1×4 | 5 × 15 cm | Photostrip |
+  | Kolom × baris | Jumlah foto | Ukuran | Jenis |
+  |---|---|---|---|
+  | 1×1 | 1 | 10 × 10 cm | Photo card |
+  | 1×2, 1×3, 1×4 | 2–4 | 5 × 15 cm | Photostrip |
+  | 2×1 | 2 | 10 × 7 cm | Photo card |
+  | 3×1, 4×1 | 3–4 | 10 × 5 cm | Photo card |
+  | 2×2 | 4 | 10 × 10 cm | Photo card |
+  | 2×3, 3×2, 3×3, 4×2 | 6–9 | 10 × 15 cm | Photo card |
 
 - **Kertas dipakai berkali-kali**: setiap cetakan hanya mengisi satu bagian kertas. Aplikasi mengingat bagian yang sudah tercetak di perangkat itu (abu-abu di pratinjau) dan otomatis memilih tempat kosong berikutnya. Operator bisa mengetuk pratinjau untuk memindah posisi, dan menekan **Kertas Baru** saat mengganti kertas. Bagian kertas baru dianggap terpakai setelah tombol **Cetak** ditekan.
-- **Ganci**: sisi depan memakai hasil frame (atau satu foto), sisi belakang berisi kutipan di dalam frame yang sama (atau foto). Dicetak di separuh kertas **4R** (atas atau bawah) untuk Canon SELPHY, jadi satu lembar cukup untuk dua pesanan ganci. Isi ganci mengikuti bentuk frame dan dimuatkan ke ukuran akrilik `PHOTOBOOTH_KEYCHAIN_WIDTH_MM` × `PHOTOBOOTH_KEYCHAIN_HEIGHT_MM` (default 28 × 40 mm).
+- **Ganci**: sisi depan memakai hasil frame (atau satu foto), sisi belakang berisi kutipan di dalam frame yang sama (atau foto). Dicetak di separuh kertas **4R** (atas atau bawah) untuk Canon SELPHY, jadi satu lembar cukup untuk dua pesanan ganci. Ada dua tipe akrilik: layout **1 foto (1×1)** memakai akrilik kotak 3,6 × 6 cm (sisipan **3 × 5 cm**), layout lain memakai akrilik persegi panjang 2,9 × 6,4 cm (sisipan **2,3 × 5,3 cm**). Frame melebar diputar 90° agar memenuhi sisipan.
 - Saat mencetak pilih printer yang sesuai, ukuran kertas sesuai lembar (A4 atau 4R), dan skala 100%.
 
 Harga dan isi paket diatur di `config/photobooth.php` bagian `print`.
