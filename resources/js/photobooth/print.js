@@ -2,13 +2,16 @@ import { sessionState } from './state.js';
 import { composePhotoStrip, findPersonFocus, getLayoutPhotoBounds, renderProcessedPose } from './compose.js';
 import { uploadPhotoStrip } from './upload.js';
 import { showDialog } from './dialog.js';
+import { areaAround, clearPaper, findFreeArea, isFree, markUsed, usedAreas } from './paper-slots.js';
 
 /*
  * Alur setelah Preview: pilih paket → (atur cetakan) → bayar → QR soft file + cetak.
  * - Soft File   : hanya QR.
  * - Paket A/B/C : QR + lembar cetak.
- *     Strip : hasil template pelanggan diulang sebanyak yang muat di kertas foto A4 (Epson L120).
- *     Ganci : 2 sisi akrilik di kertas 4R (Canon SELPHY).
+ *     Foto  : hasil frame (photostrip / photo card) di kertas foto A4 (Epson L120),
+ *             ukurannya dari tabel baris x kolom di config.
+ *     Ganci : 2 sisi akrilik di separuh kertas 4R (Canon SELPHY).
+ * Kertas dipakai berkali-kali: posisi yang sudah tercetak diingat (paper-slots.js).
  * QR soft file baru ditampilkan setelah pembayaran lunas.
  */
 
@@ -28,6 +31,10 @@ const printState = {
     keychainQuote: '',
     order: null,
     sheets: [],
+    // Posisi cetak pilihan operator (null = otomatis di tempat kosong pertama).
+    placement: { strip: null, keychain: null },
+    // Lembar yang sudah dicetak untuk pesanan ini (posisinya sudah ditandai terpakai).
+    printed: new Set(),
 };
 
 let renderToken = 0;
@@ -302,87 +309,147 @@ function blankSheet(paper) {
     return { sheet, ctx };
 }
 
-function drawSheetFooter(ctx, sheet, label, bottomMm) {
-    ctx.fillStyle = 'rgba(43, 39, 37, 0.55)';
-    ctx.font = `500 24px ${FONT}`;
-    ctx.textAlign = 'center';
-    const invoice = printState.order?.invoice_number || 'PRATINJAU';
-    ctx.fillText(`Momenta · ${label} · ${invoice}`, sheet.width / 2, sheet.height - mmToPx(bottomMm));
+const USED_FILL = 'rgba(148, 163, 184, 0.35)';
+const TARGET_STROKE = 'rgba(185, 99, 108, 0.95)';
+
+function drawContain(ctx, img, x, y, w, h) {
+    const scale = Math.min(w / img.width, h / img.height);
+    const dw = img.width * scale;
+    const dh = img.height * scale;
+    ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
+
+/** Jumlah baris × kolom layout yang dipilih (dari grid CSS layout). */
+function layoutGrid() {
+    const css = window.PHOTOBOOTH_CONFIG?.layouts?.[sessionState.layoutId]?.css_grid || '';
+    const count = property => {
+        const value = (css.match(new RegExp(`${property}\\s*:\\s*([^;]+)`)) || [])[1] || '1fr';
+        const repeat = value.match(/repeat\(\s*(\d+)/);
+        return repeat ? Number(repeat[1]) : value.trim().split(/\s+/).length;
+    };
+    return { rows: count('grid-template-rows'), cols: count('grid-template-columns') };
 }
 
 /**
- * Satu salinan template di kertas A4, tegak (tidak diputar) dan mengikuti
- * bentuk frame. Bila long_side_mm diisi, sisi terpanjang dibuat sepanjang itu;
- * bila kosong, template diperbesar sebesar mungkin di area cetak.
+ * Ukuran cetak hasil frame (mm) dari tabel "baris x kolom" di config.
+ * Arah tegak/melebar mengikuti bentuk frame.
  */
-export function planStripLayout(templateW, templateH, config) {
-    const paper = config.paper || { width_mm: 210, height_mm: 297 };
-    const margin = config.margin_mm ?? 5;
-    const usableW = paper.width_mm - margin * 2;
-    const usableH = paper.height_mm - margin * 2;
+export function stripItemSize(grid, frameW, frameH, config) {
+    const entry = config.item_sizes?.[`${grid.rows}x${grid.cols}`]
+        || config.item_size_default
+        || { size: [100, 100], type: 'Photo card' };
+    const long = Math.max(...entry.size);
+    const short = Math.min(...entry.size);
+    const portrait = frameH > frameW;
+    return { w: portrait ? short : long, h: portrait ? long : short, type: entry.type };
+}
 
-    let scale = Math.min(usableW / templateW, usableH / templateH);
-    const longSide = Number(config.long_side_mm) || 0;
-    if (longSide > 0) scale = Math.min(scale, longSide / Math.max(templateW, templateH));
+function stripLayout() {
+    const config = printConfig().strip || {};
+    return {
+        paper: config.paper || { width_mm: 210, height_mm: 297 },
+        margin: config.margin_mm ?? 5,
+        gap: config.gap_mm ?? 6,
+    };
+}
 
-    return { paper, margin, w: templateW * scale, h: templateH * scale };
+/** Kertas 4R ganci dibagi dua: atas dan bawah, masing-masing untuk satu pesanan. */
+function keychainHalves() {
+    const paper = printConfig().keychain?.paper || { width_mm: 100, height_mm: 148 };
+    const half = paper.height_mm / 2;
+    return {
+        paper,
+        layout: { paper, margin: 0, gap: 0 },
+        areas: [
+            { x: 0, y: 0, w: paper.width_mm, h: half },
+            { x: 0, y: half, w: paper.width_mm, h: half },
+        ],
+    };
+}
+
+function rectPx(area) {
+    return { x: mmToPx(area.x), y: mmToPx(area.y), w: mmToPx(area.w), h: mmToPx(area.h) };
+}
+
+/** Posisi cetak: pilihan operator bila masih bebas, kalau tidak tempat kosong pertama. */
+function resolveStripArea(size) {
+    const layout = stripLayout();
+    const chosen = printState.placement.strip;
+    // Sudah dicetak: tetap di posisi itu (untuk Cetak Ulang).
+    if (chosen && printState.printed.has('strip')) return chosen;
+    if (chosen && chosen.w === size.w && chosen.h === size.h && isFree('strip', chosen, layout)) return chosen;
+    return findFreeArea('strip', size.w, size.h, layout);
+}
+
+function resolveKeychainSlot() {
+    const { areas, layout } = keychainHalves();
+    const chosen = printState.placement.keychain;
+    if (chosen !== null && printState.printed.has('keychain')) return { index: chosen, area: areas[chosen] };
+    if (chosen !== null && isFree('keychain', areas[chosen], layout)) return { index: chosen, area: areas[chosen] };
+    const index = areas.findIndex(area => isFree('keychain', area, layout));
+    return index === -1 ? null : { index, area: areas[index] };
 }
 
 async function renderStripSheet() {
-    const config = printConfig().strip || {};
-    const plan = planStripLayout(finalImageCanvas.width, finalImageCanvas.height, config);
-    const { sheet, ctx } = blankSheet(plan.paper);
+    const layout = stripLayout();
+    const size = stripItemSize(layoutGrid(), finalImageCanvas.width, finalImageCanvas.height, printConfig());
+    const area = resolveStripArea(size);
+    const { sheet, ctx } = blankSheet(layout.paper);
 
-    const w = mmToPx(plan.w);
-    const h = mmToPx(plan.h);
-    const x = Math.round((sheet.width - w) / 2);
-    const y = Math.round((sheet.height - h) / 2);
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(finalImageCanvas, x, y, w, h);
-    drawCropMarks(ctx, { x, y, w, h });
+    if (area) {
+        const r = rectPx(area);
+        ctx.imageSmoothingQuality = 'high';
+        drawContain(ctx, finalImageCanvas, r.x, r.y, r.w, r.h);
+        drawCropMarks(ctx, r);
+    }
 
-    drawSheetFooter(ctx, sheet, 'Strip', Math.max(1.5, plan.margin / 2 - 0.5));
+    const cm = mm => (mm / 10).toLocaleString('id-ID');
     return {
         key: 'strip',
-        label: 'Strip (A4)',
-        paper: plan.paper,
+        label: `${size.type} (A4)`,
+        paper: layout.paper,
         canvas: sheet,
-        sizeLabel: `${(plan.w / 10).toFixed(1)} × ${(plan.h / 10).toFixed(1)} cm`,
+        area,
+        size,
+        sizeLabel: `${cm(size.w)} × ${cm(size.h)} cm`,
     };
 }
 
 async function renderKeychainSheet() {
-    const paper = printConfig().keychain?.paper || { width_mm: 100, height_mm: 148 };
+    const { paper } = keychainHalves();
+    const slot = resolveKeychainSlot();
     const { sheet, ctx } = blankSheet(paper);
     const front = await renderKeychainSide(printState.keychainFront);
     const back = await renderKeychainSide(
         printState.keychainBackMode === 'quote' ? 'quote' : printState.keychainBack,
     );
 
-    const gap = mmToPx(6);
-    const totalW = front.width + back.width + gap;
-    let x = Math.round((sheet.width - totalW) / 2);
-    const y = Math.round((sheet.height - front.height) / 2);
+    if (slot) {
+        const half = rectPx(slot.area);
+        const gap = mmToPx(6);
+        const totalW = front.width + back.width + gap;
+        let x = Math.round(half.x + (half.w - totalW) / 2);
+        const y = Math.round(half.y + (half.h - front.height) / 2 + mmToPx(2));
 
-    [front, back].forEach(item => {
-        ctx.drawImage(item, x, y);
-        drawCropMarks(ctx, { x, y, w: item.width, h: item.height });
-        x += item.width + gap;
-    });
+        ctx.fillStyle = INK_MUTED;
+        ctx.font = `600 26px ${FONT}`;
+        ctx.textAlign = 'center';
+        [[front, 'Depan'], [back, 'Belakang']].forEach(([item, label]) => {
+            ctx.drawImage(item, x, y);
+            drawCropMarks(ctx, { x, y, w: item.width, h: item.height });
+            ctx.fillText(label, x + item.width / 2, y - mmToPx(4.5));
+            x += item.width + gap;
+        });
+    }
 
-    ctx.fillStyle = INK_MUTED;
-    ctx.font = `600 30px ${FONT}`;
-    ctx.textAlign = 'center';
-    ctx.fillText('Depan', Math.round((sheet.width - totalW) / 2) + front.width / 2, y - mmToPx(5));
-    ctx.fillText('Belakang', Math.round((sheet.width - totalW) / 2) + front.width + gap + back.width / 2, y - mmToPx(5));
-
-    drawSheetFooter(ctx, sheet, 'Ganci', 3);
     const cm = px => ((px * 2.54) / (printConfig().dpi || 300)).toFixed(1);
     return {
         key: 'keychain',
         label: 'Ganci (4R)',
         paper,
         canvas: sheet,
+        area: slot?.area || null,
+        halfLabel: slot ? (slot.index === 0 ? 'bagian atas' : 'bagian bawah') : null,
         sizeLabel: `${cm(front.width)} × ${cm(front.height)} cm per sisi`,
     };
 }
@@ -394,20 +461,117 @@ async function renderSheets() {
     return sheets;
 }
 
-function paintCanvas(target, source) {
-    target.width = source.width;
-    target.height = source.height;
-    target.getContext('2d').drawImage(source, 0, 0);
+/** Pratinjau = hasil cetak + bagian terpakai (abu-abu) + posisi sekarang (garis putus). */
+function previewCanvas(sheet) {
+    const canvas = el('canvas', { 'aria-label': `Pratinjau ${sheet.label}` });
+    canvas.width = sheet.canvas.width;
+    canvas.height = sheet.canvas.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(sheet.canvas, 0, 0);
+
+    ctx.fillStyle = USED_FILL;
+    usedAreas(sheet.key).forEach(area => {
+        const r = rectPx(area);
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+    });
+
+    if (sheet.area) {
+        const r = rectPx(sheet.area);
+        ctx.strokeStyle = TARGET_STROKE;
+        ctx.lineWidth = 8;
+        ctx.setLineDash([24, 14]);
+        ctx.strokeRect(r.x, r.y, r.w, r.h);
+    }
+    return canvas;
+}
+
+/** Titik ketuk di kanvas (object-fit: contain) → milimeter di kertas. */
+function pointOnPaper(event, canvas, paper) {
+    const box = canvas.getBoundingClientRect();
+    const scale = Math.min(box.width / canvas.width, box.height / canvas.height);
+    const offsetX = (box.width - canvas.width * scale) / 2;
+    const offsetY = (box.height - canvas.height * scale) / 2;
+    const px = (event.clientX - box.left - offsetX) / scale;
+    const py = (event.clientY - box.top - offsetY) / scale;
+    return { x: (px / canvas.width) * paper.width_mm, y: (py / canvas.height) * paper.height_mm };
+}
+
+async function choosePosition(sheet, point) {
+    if (sheet.key === 'strip') {
+        const layout = stripLayout();
+        const area = areaAround(point, sheet.size.w, sheet.size.h, layout);
+        if (!isFree('strip', area, layout)) {
+            showDialog({ title: 'Bagian ini sudah terpakai', message: 'Ketuk bagian kertas yang masih putih.', tone: 'warning' });
+            return;
+        }
+        printState.placement.strip = area;
+    } else {
+        const { areas, layout } = keychainHalves();
+        const index = point.y < areas[1].y ? 0 : 1;
+        if (!isFree('keychain', areas[index], layout)) {
+            showDialog({ title: 'Bagian ini sudah terpakai', message: 'Pakai bagian kertas yang lain atau mulai kertas baru.', tone: 'warning' });
+            return;
+        }
+        printState.placement.keychain = index;
+    }
+    await refreshSheets();
+}
+
+async function startNewPaper(sheet) {
+    const ok = await showDialog({
+        title: 'Pakai kertas baru?',
+        message: `Semua bagian ${sheet.key === 'strip' ? 'kertas A4' : 'kertas 4R ganci'} dianggap kosong lagi. Pastikan kertas baru sudah dimasukkan ke printer.`,
+        confirmText: 'Ya, Kertas Baru',
+        cancelText: 'Batal',
+    });
+    if (!ok) return;
+    clearPaper(sheet.key);
+    printState.placement[sheet.key] = null;
+    await refreshSheets();
+}
+
+function sheetStatus(sheet) {
+    if (!sheet.area) return 'Kertas penuh. Masukkan kertas baru lalu tekan Kertas Baru.';
+    if (printState.printed.has(sheet.key)) return 'Sudah dicetak';
+    if (sheet.key === 'keychain') return `Dicetak di ${sheet.halfLabel} kertas. Ketuk bagian lain untuk memindah.`;
+    return 'Ketuk kertas untuk memindah posisi cetak.';
+}
+
+/** Kartu lembar: pratinjau yang bisa diketuk, status, tombol Kertas Baru (+ cetak/unduh). */
+function sheetFigure(sheet, actions = []) {
+    const locked = printState.printed.has(sheet.key);
+    const canvas = previewCanvas(sheet);
+    if (!locked) {
+        canvas.classList.add('is-interactive');
+        canvas.addEventListener('click', event => choosePosition(sheet, pointOnPaper(event, canvas, sheet.paper)));
+    }
+
+    return el('figure', { class: `print-sheet-figure${sheet.area ? '' : ' is-full'}` }, [
+        canvas,
+        el('figcaption', {}, [
+            el('strong', { text: `${sheet.label} · ${sheet.sizeLabel}` }),
+            el('span', { class: 'print-sheet-status', text: sheetStatus(sheet) }),
+        ]),
+        el('div', { class: 'print-sheet-actions' }, [
+            ...actions,
+            locked ? null : el('button', {
+                type: 'button',
+                class: 'print-new-paper',
+                onclick: () => startNewPaper(sheet),
+            }, ['Kertas Baru']),
+        ]),
+    ]);
 }
 
 function renderSheetPreviews(container, sheets) {
     if (!container) return;
-    container.replaceChildren(...sheets.map(sheet => {
-        const canvas = el('canvas', { 'aria-label': `Pratinjau ${sheet.label}` });
-        paintCanvas(canvas, sheet.canvas);
-        const caption = sheet.sizeLabel ? `${sheet.label} · ${sheet.sizeLabel}` : sheet.label;
-        return el('figure', { class: 'print-sheet-figure' }, [canvas, el('figcaption', { text: caption })]);
-    }));
+    container.replaceChildren(...sheets.map(sheet => sheetFigure(sheet)));
+}
+
+async function refreshSheets() {
+    printState.sheets = await renderSheets();
+    if (printState.stage === 'done') renderDoneSheets();
+    else renderSheetPreviews(document.getElementById('print-sheet-previews'), printState.sheets);
 }
 
 function scheduleSheetRender() {
@@ -496,10 +660,10 @@ function renderControls() {
     if (packageHas('strip')) {
         const config = printConfig().strip || {};
         box.append(el('section', { class: 'print-group' }, [
-            el('h3', { text: 'Cetak Strip' }),
+            el('h3', { text: 'Cetak Foto' }),
             el('p', {
                 class: 'print-hint',
-                text: `Hasil frame kamu dicetak satu kali di kertas foto ${config.paper?.name || 'A4'}, lalu dipotong mengikuti garis sudut.`,
+                text: `Hasil frame kamu dicetak di kertas foto ${config.paper?.name || 'A4'} sesuai ukuran layout. Kertas yang sama dipakai bergantian; bagian abu-abu sudah terpakai.`,
             }),
         ]));
     }
@@ -549,6 +713,8 @@ function choosePackage(code) {
     printState.keychainFront = 'final';
     printState.keychainBackMode = 'quote';
     printState.keychainBack = 'final';
+    printState.placement = { strip: null, keychain: null };
+    printState.printed = new Set();
 
     // Soft File saja: tidak ada yang perlu diatur, langsung bayar.
     if (!hasPrintItems()) {
@@ -675,24 +841,22 @@ function renderDoneSheets() {
     if (!container) return;
     container.hidden = printState.sheets.length === 0;
     container.replaceChildren(...printState.sheets.map(sheet => {
-        const canvas = el('canvas', { 'aria-label': `Lembar ${sheet.label}` });
-        paintCanvas(canvas, sheet.canvas);
-        const printer = sheet.key === 'strip' ? 'Epson L120 · kertas foto A4' : 'Canon SELPHY · kertas 4R';
-        return el('article', { class: 'print-done-sheet' }, [
-            canvas,
-            el('div', { class: 'print-done-sheet-info' }, [
-                el('strong', { text: sheet.label }),
-                el('span', { text: `${printer} · skala 100%` }),
-                el('button', { type: 'button', class: 'btn-primary', onclick: () => printSheet(sheet) }, ['Cetak']),
-                el('button', { type: 'button', class: 'btn-secondary', onclick: () => downloadSheet(sheet) }, ['Unduh']),
-            ]),
+        const printer = sheet.key === 'strip' ? 'Epson L120 · A4' : 'Canon SELPHY · 4R';
+        return sheetFigure(sheet, [
+            el('span', { class: 'print-sheet-printer', text: `${printer} · skala 100%` }),
+            el('button', {
+                type: 'button',
+                class: 'btn-primary',
+                disabled: !sheet.area,
+                onclick: () => printSheet(sheet),
+            }, [printState.printed.has(sheet.key) ? 'Cetak Ulang' : 'Cetak']),
+            el('button', { type: 'button', class: 'btn-secondary', onclick: () => downloadSheet(sheet) }, ['Unduh']),
         ]);
     }));
 }
 
 async function onPaid() {
     stopPolling();
-    // Lembar dibuat ulang agar nomor invoice tercetak di tepi kertas.
     printState.sheets = hasPrintItems() ? await renderSheets() : [];
     renderDoneSheets();
     document.querySelector('[data-print-stage="done"]')?.classList.toggle('has-sheets', printState.sheets.length > 0);
@@ -767,7 +931,16 @@ function sheetBlob(sheet) {
 }
 
 async function printSheet(sheet) {
+    if (!sheet.area) return;
     const { paper } = sheet;
+    // Bagian kertas ini ditandai terpakai sekali saja; Cetak Ulang memakai posisi yang sama.
+    if (!printState.printed.has(sheet.key)) {
+        markUsed(sheet.key, sheet.area);
+        printState.printed.add(sheet.key);
+        if (sheet.key === 'strip') printState.placement.strip = sheet.area;
+        else printState.placement.keychain = sheet.area.y > 0 ? 1 : 0;
+        renderDoneSheets();
+    }
     const url = URL.createObjectURL(await sheetBlob(sheet));
     const frame = el('iframe', { class: 'print-frame', title: 'Lembar cetak' });
     document.body.append(frame);
@@ -811,6 +984,8 @@ export function openPaymentFlow() {
     focusCache.clear();
     printState.order = null;
     printState.sheets = [];
+    printState.placement = { strip: null, keychain: null };
+    printState.printed = new Set();
 
     // Hasil template lengkap (dengan stiker/coretan) untuk lembar strip.
     const finalCanvas = document.getElementById('final-canvas');
