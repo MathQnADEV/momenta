@@ -162,19 +162,19 @@ function wrapLines(ctx, text, maxWidth, maxLines) {
 // ── Ganci akrilik ────────────────────────────────────────────────────────────
 
 /**
- * Ukuran isi ganci: mengikuti bentuk frame, dimuatkan ke kotak ukuran akrilik.
+ * Tipe akrilik ganci: layout 1 foto (1x1) memakai akrilik kotak, layout lain
+ * (strip/grid) memakai akrilik persegi panjang. Ukuran sisipan dari config.
  */
-function keychainSize() {
-    const size = printConfig().keychain || {};
-    const boxW = mmToPx(size.width_mm || 28);
-    const boxH = mmToPx(size.height_mm || 40);
-    if (!finalImageCanvas?.width) return { W: boxW, H: boxH };
+function keychainType() {
+    const grid = layoutGrid();
+    const key = grid.rows === 1 && grid.cols === 1 ? 'card' : 'strip';
+    const types = printConfig().keychain?.types || {};
+    return { key, ...(types[key] || { name: 'Persegi panjang', print_mm: [23, 53] }) };
+}
 
-    const scale = Math.min(boxW / finalImageCanvas.width, boxH / finalImageCanvas.height);
-    return {
-        W: Math.round(finalImageCanvas.width * scale),
-        H: Math.round(finalImageCanvas.height * scale),
-    };
+function keychainSize() {
+    const [w, h] = keychainType().print_mm;
+    return { W: mmToPx(w), H: mmToPx(h) };
 }
 
 function keychainCanvas() {
@@ -184,13 +184,32 @@ function keychainCanvas() {
     canvas.height = H;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingQuality = 'high';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
     return { canvas, ctx, W, H };
+}
+
+/**
+ * Muatkan frame utuh ke sisipan ganci. Frame melebar diputar 90° agar
+ * memenuhi akrilik yang tegak.
+ */
+function drawFrameInto(ctx, source, W, H) {
+    const rotate = source.width > source.height && H > W;
+    if (!rotate) {
+        drawContain(ctx, source, 0, 0, W, H);
+        return;
+    }
+    ctx.save();
+    ctx.translate(W, 0);
+    ctx.rotate(Math.PI / 2);
+    drawContain(ctx, source, 0, 0, H, W);
+    ctx.restore();
 }
 
 /** Hasil frame lengkap (foto + frame + stiker), sama seperti soft file. */
 function renderKeychainFramed() {
     const { canvas, ctx, W, H } = keychainCanvas();
-    ctx.drawImage(finalImageCanvas, 0, 0, W, H);
+    drawFrameInto(ctx, finalImageCanvas, W, H);
     return canvas;
 }
 
@@ -268,7 +287,7 @@ async function renderKeychainQuote() {
     ctx.fillText(todayLabel(), centerX, box.y + box.h - inset - pad * 0.4);
 
     const { canvas, ctx: out, W, H } = keychainCanvas();
-    out.drawImage(frame, 0, 0, W, H);
+    drawFrameInto(out, frame, W, H);
     return canvas;
 }
 
@@ -331,11 +350,13 @@ function layoutGrid() {
 }
 
 /**
- * Ukuran cetak hasil frame (mm) dari tabel "baris x kolom" di config.
+ * Ukuran cetak hasil frame (mm) dari tabel "kolom x baris" di config.
  * Arah tegak/melebar mengikuti bentuk frame.
  */
 export function stripItemSize(grid, frameW, frameH, config) {
-    const entry = config.item_sizes?.[`${grid.rows}x${grid.cols}`]
+    const sizes = config.item_sizes || {};
+    const entry = sizes[`${grid.cols}x${grid.rows}`]
+        || sizes[`${grid.rows}x${grid.cols}`]
         || config.item_size_default
         || { size: [100, 100], type: 'Photo card' };
     const long = Math.max(...entry.size);
@@ -445,7 +466,7 @@ async function renderKeychainSheet() {
     const cm = px => ((px * 2.54) / (printConfig().dpi || 300)).toFixed(1);
     return {
         key: 'keychain',
-        label: 'Ganci (4R)',
+        label: `Ganci ${keychainType().name} (4R)`,
         paper,
         canvas: sheet,
         area: slot?.area || null,

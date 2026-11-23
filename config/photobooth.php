@@ -830,34 +830,37 @@ return [
             'gap_mm' => 6,
         ],
 
-        // Ukuran cetak per layout, kunci "baris x kolom" (Grid 2x3 = 2 baris × 3 kolom,
-        // Template Hijau = 4 baris × 2 kolom). Nilai [panjang, pendek] dalam mm;
-        // arah tegak/melebar mengikuti bentuk frame. Frame dimuat utuh, sisa jadi tepi putih.
+        // Ukuran cetak per layout, kunci "kolom x baris" (2 Foto Samping = 2x1,
+        // Strip 3 Pose = 1x3, Template Hijau = 2x4). Bila kunci tidak ada, dicoba
+        // kebalikannya (2x4 -> 4x2). Nilai [lebar, tinggi] dalam mm; arah tegak/melebar
+        // mengikuti bentuk frame. Frame dimuat utuh, sisa jadi tepi putih.
         'item_sizes' => [
             '1x1' => ['size' => [100, 100], 'type' => 'Photo card'],
-            '1x2' => ['size' => [100, 50], 'type' => 'Photostrip'],
-            '2x1' => ['size' => [100, 50], 'type' => 'Photo card'],
-            '3x1' => ['size' => [100, 40], 'type' => 'Photo card'],
-            '1x3' => ['size' => [100, 50], 'type' => 'Photostrip'],
-            '4x1' => ['size' => [100, 35], 'type' => 'Photo card'],
-            '1x4' => ['size' => [150, 50], 'type' => 'Photostrip'],
+            '1x2' => ['size' => [50, 150], 'type' => 'Photostrip'],
+            '2x1' => ['size' => [100, 70], 'type' => 'Photo card'],
+            '3x1' => ['size' => [100, 50], 'type' => 'Photo card'],
+            '1x3' => ['size' => [50, 150], 'type' => 'Photostrip'],
+            '4x1' => ['size' => [100, 50], 'type' => 'Photo card'],
+            '1x4' => ['size' => [50, 150], 'type' => 'Photostrip'],
             '2x2' => ['size' => [100, 100], 'type' => 'Photo card'],
-            '2x3' => ['size' => [100, 50], 'type' => 'Photostrip'],
-            '3x3' => ['size' => [100, 100], 'type' => 'Photo card'],
-            '4x2' => ['size' => [100, 50], 'type' => 'Photostrip'],
-            '3x2' => ['size' => [100, 100], 'type' => 'Photo card'],
+            '2x3' => ['size' => [100, 150], 'type' => 'Photo card'],
+            '3x3' => ['size' => [100, 150], 'type' => 'Photo card'],
+            '4x2' => ['size' => [100, 150], 'type' => 'Photo card'],
+            '3x2' => ['size' => [100, 150], 'type' => 'Photo card'],
         ],
         // Layout yang tidak ada di tabel memakai ukuran ini.
         'item_size_default' => ['size' => [100, 100], 'type' => 'Photo card'],
 
         // Ganci akrilik 2 sisi, dicetak di Canon SELPHY (kertas 4R). Kertas dibagi dua
-        // (atas–bawah) sehingga satu lembar bisa dipakai untuk dua pesanan ganci.
-        // Isi ganci mengikuti bentuk frame dan dimuatkan ke kotak lebar × tinggi ini.
-        // Ukuran akrilik belum pasti: ubah lewat .env bila sudah diketahui.
+        // (atas-bawah) sehingga satu lembar bisa dipakai untuk dua pesanan ganci.
+        // Dua tipe akrilik: layout 1 foto (1x1) memakai tipe "kotak", layout lain "strip".
+        // print_mm = ukuran kertas sisipan [lebar, tinggi]; frame dimuat utuh di dalamnya.
         'keychain' => [
             'paper' => ['name' => '4R', 'width_mm' => 100, 'height_mm' => 148],
-            'width_mm' => (float) env('PHOTOBOOTH_KEYCHAIN_WIDTH_MM', 28),
-            'height_mm' => (float) env('PHOTOBOOTH_KEYCHAIN_HEIGHT_MM', 40),
+            'types' => [
+                'strip' => ['name' => 'Persegi panjang', 'outer' => '2,9 × 6,4 cm', 'print_mm' => [23, 53]],
+                'card' => ['name' => 'Kotak', 'outer' => '3,6 × 6 cm', 'print_mm' => [30, 50]],
+            ],
         ],
 
         // Semua pilihan sudah termasuk sesi foto dan soft file (QR).
