@@ -29,17 +29,22 @@ testing123
 
 Password disimpan dalam bentuk hash bcrypt di database.
 
-## Cetak Fisik & Pembayaran
+## Paket, Pembayaran & Cetak
 
-Setelah foto tersimpan, tombol **Cetak Foto Fisik** membuka pilihan paket:
+Setelah Preview, pelanggan menekan **Simpan & Pilih Paket**. Foto langsung diunggah, tetapi **QR soft file baru muncul setelah pembayaran lunas** (halaman `/foto/{slug}` menolak foto yang belum dibayar). Bila pelanggan memilih **Selesai Tanpa Membeli**, foto tetap tersimpan tanpa QR.
 
-| Paket | Isi | Harga |
+| Pilihan | Isi | Harga |
 |---|---|---|
-| A | 2 photocard 54 × 86 mm (2 pose berbeda / 1 pose rangkap) | Rp10.000 |
-| B | 1 photocard + gantungan kunci akrilik 2 sisi | Rp20.000 |
-| C | Gantungan kunci akrilik 2 sisi | Rp15.000 |
+| Soft File | Foto + soft file (QR) | Rp8.000 |
+| Paket A | Foto + soft file + cetak strip | Rp13.000 |
+| Paket B | Foto + soft file + ganci akrilik 2 sisi | Rp15.000 |
+| Paket C | Foto + soft file + strip + ganci akrilik | Rp20.000 |
 
-Semua item dicetak pada satu lembar 4R (100 × 148 mm, 300 DPI) dengan garis potong, untuk Canon SELPHY CP1500. Ukuran, harga, dan isi paket diatur di `config/photobooth.php` bagian `print`.
+- **Strip**: hasil template pelanggan dicetak di kertas foto **A4** (Epson L120), diulang sebanyak yang muat dengan garis potong. Sisi terpanjang tiap salinan 150 mm (ubah lewat `PHOTOBOOTH_STRIP_LONG_SIDE_MM`). L120 tidak bisa cetak tanpa margin, jadi lembar diberi tepi putih 5 mm.
+- **Ganci**: depan dan belakang (foto atau kutipan) dicetak di kertas **4R** untuk Canon SELPHY. Ukuran akrilik diatur lewat `PHOTOBOOTH_KEYCHAIN_WIDTH_MM` dan `PHOTOBOOTH_KEYCHAIN_HEIGHT_MM` (default 28 × 40 mm).
+- Saat mencetak pilih printer yang sesuai, ukuran kertas sesuai lembar (A4 atau 4R), dan skala 100%.
+
+Harga dan isi paket diatur di `config/photobooth.php` bagian `print`.
 
 Pembayaran memakai **QRIS statis + PIN operator** (`PHOTOBOOTH_PAYMENT_DRIVER=qris_static`):
 
@@ -54,4 +59,4 @@ Pesanan tersimpan di tabel `print_orders` sehingga nantinya dapat diganti integr
 
 Jika layar lebih lebar daripada tingginya (Xiaomi Pad 8 Pro landscape, laptop), kiosk memakai kanvas landscape setinggi 1080 px. Di langkah Foto, kamera tampil besar di kiri dan template di kanan; kamera live muncul langsung di slot yang sedang diisi, dan foto yang sudah diambil bisa diulang dengan menekan slotnya. Layar portrait tetap memakai tampilan 1080 × 1920.
 
-Saat mencetak pilih printer SELPHY, kertas 4R, skala 100%, tanpa margin. Di Chrome/Edge Windows, dialog print dapat dilewati dengan menjalankan browser memakai opsi `--kiosk-printing`.
+Di Chrome/Edge Windows, dialog print dapat dilewati dengan menjalankan browser memakai opsi `--kiosk-printing` (printer bawaan yang dipakai).

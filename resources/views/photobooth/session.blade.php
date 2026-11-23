@@ -567,55 +567,22 @@
 
         <div class="step-actions">
             <button class="btn-primary btn-glow" id="btn-save-photo">
-                Simpan & Dapatkan QR Code
+                Simpan & Pilih Paket
             </button>
             <button class="btn-secondary btn-retake-photos" type="button">Jepret Ulang</button>
             <button class="btn-back" id="btn-back-stickers">Edit Hiasan</button>
         </div>
     </section>
 
-    {{-- ── STEP 6: QR & Selesai ────────────────────────────────────────────── --}}
-    <section class="session-step" id="step-qr">
-        <h2 class="step-title">Foto Tersimpan! 🎉</h2>
-        <p class="step-desc">Scan QR code untuk mengunduh foto ke HP kamu</p>
-
-        <div class="qr-area">
-            <div class="qr-card">
-                <div class="qr-code" id="qr-code"></div>
-                <a class="qr-url" id="qr-url" href="#" target="_blank" rel="noopener"></a>
-            </div>
-        </div>
-
-        <div class="upload-status" id="upload-status">
-            <div class="upload-progress" id="upload-progress">
-                <div class="spinner"></div>
-                <span>Mengunggah foto...</span>
-            </div>
-            <div class="upload-error" id="upload-error" style="display:none;">
-                <span>⚠️ Gagal mengunggah. </span>
-                <button class="btn-retry" id="btn-retry-upload">Coba Lagi</button>
-            </div>
-        </div>
-
-        <p class="qr-expiry-note">Foto dan link tersedia selama 10 menit. Scan dan unduh sekarang.</p>
-        <div class="step-actions">
-            <button class="btn-primary btn-glow" id="btn-open-print" type="button">
-                Cetak Foto Fisik
-            </button>
-            <a href="{{ route('photobooth.index') }}" class="btn-secondary" id="btn-new-session">
-                Kembali ke Home
-            </a>
-        </div>
-    </section>
-
-    {{-- ── STEP 7: Cetak Fisik ─────────────────────────────────────────────── --}}
+    {{-- ── STEP 6: Paket, Bayar, lalu QR & Cetak ─────────────────────────────── --}}
+    {{-- Foto diunggah saat masuk langkah ini, tapi QR soft file baru tampil setelah lunas. --}}
     <section class="session-step" id="step-print">
         <div class="print-panel" data-print-stage="package">
-            <h2 class="step-title">Pilih Format Cetak</h2>
-            <p class="step-desc">Dicetak di kertas foto 4R, siap dipotong dan dibawa pulang</p>
+            <h2 class="step-title">Pilih Paket</h2>
+            <p class="step-desc">Semua paket sudah termasuk soft file. QR untuk unduh foto muncul setelah pembayaran.</p>
             <div class="print-package-list" id="print-package-list"></div>
             <div class="step-actions">
-                <button class="btn-back" id="btn-print-exit" type="button">Kembali ke QR</button>
+                <button class="btn-back" id="btn-print-exit" type="button">Selesai Tanpa Membeli</button>
             </div>
         </div>
 
@@ -625,9 +592,9 @@
             <div class="print-workspace">
                 <div class="print-controls" id="print-controls"></div>
                 <div class="print-preview">
-                    <canvas id="print-sheet-preview" aria-label="Pratinjau lembar 4R"></canvas>
+                    <div class="print-sheet-previews" id="print-sheet-previews"></div>
                     <span class="print-preview-status" id="print-preview-status" hidden>Menyiapkan pratinjau...</span>
-                    <span class="print-preview-caption">Pratinjau kertas 4R · garis sudut = garis potong</span>
+                    <span class="print-preview-caption">Garis sudut = garis potong</span>
                 </div>
             </div>
             <div class="step-actions">
@@ -670,20 +637,37 @@
             </div>
             <div class="step-actions">
                 <button class="btn-primary btn-glow" id="btn-simulate-payment" type="button" hidden>Konfirmasi Pembayaran (Simulasi)</button>
-                <button class="btn-back" id="btn-payment-back" type="button">Ubah Cetakan</button>
+                <button class="btn-back" id="btn-payment-back" type="button">Kembali</button>
             </div>
         </div>
 
         <div class="print-panel" data-print-stage="done" hidden>
-            <h2 class="step-title">Siap Dicetak! 🖨️</h2>
-            <p class="step-desc">Pilih printer Canon SELPHY CP1500, kertas 4R (100 × 148 mm), skala 100%, tanpa margin.</p>
-            <div class="print-preview print-preview--final">
-                <canvas id="print-final-preview" aria-label="Lembar 4R siap cetak"></canvas>
+            <h2 class="step-title">Pembayaran Berhasil! 🎉</h2>
+            <p class="step-desc">Scan QR untuk mengunduh foto ke HP kamu.</p>
+            <div class="print-done-layout">
+                <div class="print-done-qr">
+                    <div class="qr-card">
+                        <div class="qr-code" id="qr-code"></div>
+                        <a class="qr-url" id="qr-url" href="#" target="_blank" rel="noopener"></a>
+                    </div>
+                    <div class="upload-status" id="upload-status">
+                        <div class="upload-progress" id="upload-progress">
+                            <div class="spinner"></div>
+                            <span>Mengunggah foto...</span>
+                        </div>
+                        <div class="upload-error" id="upload-error" style="display:none;">
+                            <span>⚠️ Gagal mengunggah. </span>
+                            <button class="btn-retry" id="btn-retry-upload">Coba Lagi</button>
+                        </div>
+                    </div>
+                    <p class="qr-expiry-note">Link tersedia selama {{ config('photobooth.retention_minutes') }} menit. Scan dan unduh sekarang.</p>
+                </div>
+
+                {{-- Lembar cetak (hanya untuk paket yang berisi strip/ganci). --}}
+                <div class="print-done-sheets" id="print-done-sheets"></div>
             </div>
             <div class="step-actions">
-                <button class="btn-primary btn-glow" id="btn-print-sheet" type="button">Cetak Sekarang</button>
-                <button class="btn-secondary" id="btn-download-sheet" type="button">Unduh Lembar Cetak</button>
-                <a href="{{ route('photobooth.index') }}" class="btn-back">Selesai — Kembali ke Home</a>
+                <a href="{{ route('photobooth.index') }}" class="btn-primary btn-glow">Selesai — Kembali ke Home</a>
             </div>
         </div>
     </section>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Photo extends Model
 {
@@ -43,6 +44,22 @@ class Photo extends Model
                          $query->whereNull('expires_at')
                                ->orWhere('expires_at', '>', now());
                      });
+    }
+
+    /**
+     * Relasi: pesanan (soft file / cetak) untuk foto ini.
+     */
+    public function printOrders(): HasMany
+    {
+        return $this->hasMany(PrintOrder::class);
+    }
+
+    /**
+     * Scope: soft file sudah dibayar (minimal satu pesanan lunas).
+     */
+    public function scopePaid($query)
+    {
+        return $query->whereHas('printOrders', fn ($orders) => $orders->where('status', 'paid'));
     }
 
     /**

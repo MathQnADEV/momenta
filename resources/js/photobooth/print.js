@@ -1,9 +1,14 @@
 import { sessionState } from './state.js';
 import { renderProcessedPose, findPersonFocus } from './compose.js';
+import { uploadPhotoStrip } from './upload.js';
 
 /*
- * Alur cetak fisik: pilih paket → atur kartu/ganci → bayar → cetak lembar 4R.
- * Semua item dari satu paket digambar pada satu lembar 4R 300 DPI dengan garis potong.
+ * Alur setelah Preview: pilih paket → (atur cetakan) → bayar → QR soft file + cetak.
+ * - Soft File   : hanya QR.
+ * - Paket A/B/C : QR + lembar cetak.
+ *     Strip : hasil template pelanggan diulang sebanyak yang muat di kertas foto A4 (Epson L120).
+ *     Ganci : 2 sisi akrilik di kertas 4R (Canon SELPHY).
+ * QR soft file baru ditampilkan setelah pembayaran lunas.
  */
 
 const INK = '#2b2725';
@@ -16,19 +21,14 @@ const FONT = '"Outfit", sans-serif';
 const printState = {
     stage: 'package',
     packageCode: null,
-    cardMode: 'different',
-    cardSources: [0, 1],
-    cardDesign: 'plain',
-    cardData: { name: '', nim: '', prodi: '', title: '', date: '' },
     keychainFront: 0,
     keychainBackMode: 'photo',
     keychainBack: 1,
     keychainQuote: '',
     order: null,
-    sheetCanvas: null,
+    sheets: [],
 };
 
-let onExit = () => {};
 let renderToken = 0;
 let renderDebounce = null;
 let pollTimer = null;
@@ -57,6 +57,10 @@ function currentPackage() {
 
 function packageHas(item) {
     return (currentPackage()?.items || []).includes(item);
+}
+
+function hasPrintItems() {
+    return (currentPackage()?.items || []).length > 0;
 }
 
 function poseCount() {
@@ -104,11 +108,6 @@ function loadLogo() {
     return logoPromise;
 }
 
-async function sourceImage(source) {
-    if (source === 'final') return finalImageCanvas;
-    return processedPose(Number(source));
-}
-
 /**
  * Crop "cover" yang menjaga orang tetap di tengah. zoom < 1 memperbesar ke wajah.
  */
@@ -128,13 +127,6 @@ function drawFocusedCover(ctx, img, x, y, w, h, focus, zoom = 1) {
     const sy = Math.max(0, Math.min(img.height - sh, cy - sh * 0.42));
 
     ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-}
-
-function drawContain(ctx, img, x, y, w, h) {
-    const scale = Math.min(w / img.width, h / img.height);
-    const dw = img.width * scale;
-    const dh = img.height * scale;
-    ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
 }
 
 function wrapLines(ctx, text, maxWidth, maxLines) {
@@ -163,101 +155,15 @@ function wrapLines(ctx, text, maxWidth, maxLines) {
     return lines;
 }
 
-// ── Gambar item ──────────────────────────────────────────────────────────────
+// ── Ganci akrilik ────────────────────────────────────────────────────────────
 
-async function renderPhotocard(source) {
-    const size = printConfig().photocard || { width_mm: 54, height_mm: 86 };
-    const W = mmToPx(size.width_mm);
-    const H = mmToPx(size.height_mm);
-    const canvas = el('canvas');
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = CREAM;
-    ctx.fillRect(0, 0, W, H);
-
-    const pad = Math.round(W * 0.05);
-    const withData = printState.cardDesign === 'data';
-    const photo = { x: pad, y: pad, w: W - pad * 2, h: Math.round(H * (withData ? 0.6 : 0.7)) };
-
-    const img = await sourceImage(source);
-    if (img) {
-        if (source === 'final') {
-            ctx.fillStyle = CREAM_DEEP;
-            ctx.fillRect(photo.x, photo.y, photo.w, photo.h);
-            drawContain(ctx, img, photo.x, photo.y, photo.w, photo.h);
-        } else {
-            drawFocusedCover(ctx, img, photo.x, photo.y, photo.w, photo.h, await personFocus(Number(source)));
-        }
-    }
-
-    const footerTop = photo.y + photo.h;
-    const footerH = H - pad - footerTop;
-    const logo = await loadLogo();
-    const date = printState.cardData.date.trim() || todayLabel();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-
-    if (!withData) {
-        if (logo) {
-            const logoH = footerH * 0.68;
-            const logoW = Math.min(W * 0.7, logoH * (logo.width / logo.height));
-            const drawH = logoW * (logo.height / logo.width);
-            ctx.drawImage(logo, (W - logoW) / 2, footerTop + footerH * 0.04, logoW, drawH);
-        }
-        ctx.fillStyle = INK_MUTED;
-        ctx.font = `500 ${Math.round(W * 0.034)}px ${FONT}`;
-        ctx.fillText(date, W / 2, H - pad - Math.round(W * 0.01));
-        return canvas;
-    }
-
-    const { name, nim, prodi, title } = printState.cardData;
-    const maxWidth = W - pad * 2;
-    let y = footerTop + Math.round(W * 0.085);
-
-    if (name.trim()) {
-        ctx.fillStyle = INK;
-        ctx.font = `700 ${Math.round(W * 0.056)}px ${FONT}`;
-        ctx.fillText(wrapLines(ctx, name, maxWidth, 1)[0], W / 2, y);
-        y += Math.round(W * 0.06);
-    }
-
-    const idLine = [nim.trim(), prodi.trim()].filter(Boolean).join(' · ');
-    if (idLine) {
-        ctx.fillStyle = INK_MUTED;
-        ctx.font = `500 ${Math.round(W * 0.036)}px ${FONT}`;
-        ctx.fillText(wrapLines(ctx, idLine, maxWidth, 1)[0], W / 2, y);
-        y += Math.round(W * 0.055);
-    }
-
-    if (title.trim()) {
-        ctx.fillStyle = INK;
-        ctx.font = `italic 400 ${Math.round(W * 0.033)}px ${FONT}`;
-        wrapLines(ctx, `“${title.trim()}”`, maxWidth, 2).forEach(line => {
-            ctx.fillText(line, W / 2, y);
-            y += Math.round(W * 0.045);
-        });
-    }
-
-    const bottom = H - pad;
-    ctx.fillStyle = ROSE;
-    ctx.font = `600 ${Math.round(W * 0.03)}px ${FONT}`;
-    ctx.textAlign = 'left';
-    ctx.fillText(date, pad, bottom - Math.round(W * 0.012));
-
-    if (logo) {
-        const logoW = W * 0.3;
-        const logoH = logoW * (logo.height / logo.width);
-        ctx.drawImage(logo, W - pad - logoW, bottom - logoH, logoW, logoH);
-    }
-    return canvas;
+function keychainSize() {
+    const size = printConfig().keychain || {};
+    return { W: mmToPx(size.width_mm || 28), H: mmToPx(size.height_mm || 40) };
 }
 
 async function renderKeychainPhoto(index) {
-    const size = printConfig().keychain || { width_mm: 28, height_mm: 40 };
-    const W = mmToPx(size.width_mm);
-    const H = mmToPx(size.height_mm);
+    const { W, H } = keychainSize();
     const canvas = el('canvas');
     canvas.width = W;
     canvas.height = H;
@@ -274,9 +180,7 @@ async function renderKeychainPhoto(index) {
 }
 
 async function renderKeychainQuote() {
-    const size = printConfig().keychain || { width_mm: 28, height_mm: 40 };
-    const W = mmToPx(size.width_mm);
-    const H = mmToPx(size.height_mm);
+    const { W, H } = keychainSize();
     const canvas = el('canvas');
     canvas.width = W;
     canvas.height = H;
@@ -325,11 +229,11 @@ async function renderKeychainQuote() {
 
     ctx.fillStyle = INK_MUTED;
     ctx.font = `500 ${Math.round(W * 0.052)}px ${FONT}`;
-    ctx.fillText(printState.cardData.date.trim() || todayLabel(), W / 2, footerY - Math.round(W * 0.03));
+    ctx.fillText(todayLabel(), W / 2, footerY - Math.round(W * 0.03));
     return canvas;
 }
 
-// ── Lembar 4R ────────────────────────────────────────────────────────────────
+// ── Lembar cetak ─────────────────────────────────────────────────────────────
 
 function drawCropMarks(ctx, rect) {
     const offset = mmToPx(1);
@@ -350,96 +254,150 @@ function drawCropMarks(ctx, rect) {
     ctx.restore();
 }
 
-async function buildItems() {
-    const items = [];
-
-    if (packageHas('photocard')) {
-        const total = (currentPackage().items || []).filter(item => item === 'photocard').length;
-        const first = await renderPhotocard(printState.cardSources[0]);
-        items.push({ kind: 'card', canvas: first });
-
-        for (let i = 1; i < total; i++) {
-            const duplicate = printState.cardMode === 'duplicate';
-            items.push({
-                kind: 'card',
-                canvas: duplicate ? first : await renderPhotocard(printState.cardSources[i] ?? 0),
-            });
-        }
-    }
-
-    if (packageHas('keychain')) {
-        items.push({ kind: 'keychain', canvas: await renderKeychainPhoto(printState.keychainFront) });
-        items.push({
-            kind: 'keychain',
-            canvas: printState.keychainBackMode === 'quote'
-                ? await renderKeychainQuote()
-                : await renderKeychainPhoto(printState.keychainBack),
-        });
-    }
-
-    return items;
-}
-
-async function renderSheet() {
-    const paper = printConfig().paper || { width_mm: 100, height_mm: 148 };
-    const SW = mmToPx(paper.width_mm);
-    const SH = mmToPx(paper.height_mm);
-    const gap = mmToPx(6);
+function blankSheet(paper) {
     const sheet = el('canvas');
-    sheet.width = SW;
-    sheet.height = SH;
+    sheet.width = mmToPx(paper.width_mm);
+    sheet.height = mmToPx(paper.height_mm);
     const ctx = sheet.getContext('2d');
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, SW, SH);
-
-    const items = await buildItems();
-    const cards = items.filter(item => item.kind === 'card');
-    const keychains = items.filter(item => item.kind === 'keychain');
-
-    // Kartu tegak diputar 90° agar dua kartu 54×86 mm muat bertumpuk di kertas 100 mm.
-    const rows = cards.map(card => ({ type: 'card', w: card.canvas.height, h: card.canvas.width, card }));
-    if (keychains.length) {
-        const kw = keychains[0].canvas.width;
-        rows.push({ type: 'keychains', w: kw * keychains.length + gap * (keychains.length - 1), h: keychains[0].canvas.height });
-    }
-
-    const totalH = rows.reduce((sum, row) => sum + row.h, 0) + gap * Math.max(0, rows.length - 1);
-    let y = Math.round((SH - totalH) / 2);
-
-    rows.forEach(row => {
-        const x = Math.round((SW - row.w) / 2);
-        if (row.type === 'card') {
-            ctx.save();
-            ctx.translate(x, y + row.h);
-            ctx.rotate(-Math.PI / 2);
-            ctx.drawImage(row.card.canvas, 0, 0);
-            ctx.restore();
-            drawCropMarks(ctx, { x, y, w: row.w, h: row.h });
-        } else {
-            let kx = x;
-            keychains.forEach(item => {
-                ctx.drawImage(item.canvas, kx, y);
-                drawCropMarks(ctx, { x: kx, y, w: item.canvas.width, h: item.canvas.height });
-                kx += item.canvas.width + gap;
-            });
-        }
-        y += row.h + gap;
-    });
-
-    ctx.fillStyle = 'rgba(43, 39, 37, 0.55)';
-    ctx.font = `500 22px ${FONT}`;
-    ctx.textAlign = 'center';
-    const invoice = printState.order?.invoice_number || 'PRATINJAU';
-    ctx.fillText(`Momenta · Paket ${printState.packageCode} · ${invoice}`, SW / 2, SH - mmToPx(3));
-
-    return sheet;
+    ctx.fillRect(0, 0, sheet.width, sheet.height);
+    return { sheet, ctx };
 }
 
-function paintPreview(target, sheet) {
-    if (!target || !sheet) return;
-    target.width = sheet.width;
-    target.height = sheet.height;
-    target.getContext('2d').drawImage(sheet, 0, 0);
+function drawSheetFooter(ctx, sheet, label, bottomMm) {
+    ctx.fillStyle = 'rgba(43, 39, 37, 0.55)';
+    ctx.font = `500 24px ${FONT}`;
+    ctx.textAlign = 'center';
+    const invoice = printState.order?.invoice_number || 'PRATINJAU';
+    ctx.fillText(`Momenta · ${label} · ${invoice}`, sheet.width / 2, sheet.height - mmToPx(bottomMm));
+}
+
+/**
+ * Susunan template di A4: ukuran tiap salinan mengikuti rasio template
+ * (sisi terpanjang = long_side_mm), lalu dipilih posisi tegak atau diputar
+ * yang menghasilkan salinan terbanyak.
+ */
+export function planStripLayout(templateW, templateH, config) {
+    const paper = config.paper || { width_mm: 210, height_mm: 297 };
+    const margin = config.margin_mm ?? 5;
+    const gap = config.gap_mm ?? 4;
+    const longSide = config.long_side_mm || 150;
+    const usableW = paper.width_mm - margin * 2;
+    const usableH = paper.height_mm - margin * 2;
+
+    const portrait = templateH >= templateW;
+    let itemW = portrait ? (longSide * templateW) / templateH : longSide;
+    let itemH = portrait ? longSide : (longSide * templateH) / templateW;
+
+    const fit = (w, h) => ({
+        cols: Math.floor((usableW + gap) / (w + gap)),
+        rows: Math.floor((usableH + gap) / (h + gap)),
+    });
+
+    let best = null;
+    [false, true].forEach(rotated => {
+        const w = rotated ? itemH : itemW;
+        const h = rotated ? itemW : itemH;
+        const { cols, rows } = fit(w, h);
+        const count = cols * rows;
+        if (count > 0 && (!best || count > best.count)) best = { rotated, w, h, cols, rows, count };
+    });
+
+    // Template terlalu besar untuk ukuran ini: perkecil agar tetap muat satu.
+    if (!best) {
+        const scale = Math.min(usableW / itemW, usableH / itemH);
+        itemW *= scale;
+        itemH *= scale;
+        best = { rotated: false, w: itemW, h: itemH, cols: 1, rows: 1, count: 1 };
+    }
+
+    return { ...best, paper, margin, gap };
+}
+
+async function renderStripSheet() {
+    const config = printConfig().strip || {};
+    const plan = planStripLayout(finalImageCanvas.width, finalImageCanvas.height, config);
+    const { sheet, ctx } = blankSheet(plan.paper);
+
+    const w = mmToPx(plan.w);
+    const h = mmToPx(plan.h);
+    const gap = mmToPx(plan.gap);
+    const gridW = plan.cols * w + (plan.cols - 1) * gap;
+    const gridH = plan.rows * h + (plan.rows - 1) * gap;
+    const startX = Math.round((sheet.width - gridW) / 2);
+    const startY = Math.round((sheet.height - gridH) / 2);
+
+    for (let row = 0; row < plan.rows; row += 1) {
+        for (let col = 0; col < plan.cols; col += 1) {
+            const x = startX + col * (w + gap);
+            const y = startY + row * (h + gap);
+            ctx.save();
+            if (plan.rotated) {
+                ctx.translate(x, y + h);
+                ctx.rotate(-Math.PI / 2);
+                ctx.drawImage(finalImageCanvas, 0, 0, h, w);
+            } else {
+                ctx.drawImage(finalImageCanvas, x, y, w, h);
+            }
+            ctx.restore();
+            drawCropMarks(ctx, { x, y, w, h });
+        }
+    }
+
+    drawSheetFooter(ctx, sheet, `Strip ${plan.count}×`, Math.max(1.5, plan.margin / 2 - 0.5));
+    return { key: 'strip', label: 'Strip (A4)', paper: plan.paper, canvas: sheet, copies: plan.count };
+}
+
+async function renderKeychainSheet() {
+    const paper = printConfig().keychain?.paper || { width_mm: 100, height_mm: 148 };
+    const { sheet, ctx } = blankSheet(paper);
+    const front = await renderKeychainPhoto(printState.keychainFront);
+    const back = printState.keychainBackMode === 'quote'
+        ? await renderKeychainQuote()
+        : await renderKeychainPhoto(printState.keychainBack);
+
+    const gap = mmToPx(6);
+    const totalW = front.width + back.width + gap;
+    let x = Math.round((sheet.width - totalW) / 2);
+    const y = Math.round((sheet.height - front.height) / 2);
+
+    [front, back].forEach(item => {
+        ctx.drawImage(item, x, y);
+        drawCropMarks(ctx, { x, y, w: item.width, h: item.height });
+        x += item.width + gap;
+    });
+
+    ctx.fillStyle = INK_MUTED;
+    ctx.font = `600 30px ${FONT}`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Depan', Math.round((sheet.width - totalW) / 2) + front.width / 2, y - mmToPx(5));
+    ctx.fillText('Belakang', Math.round((sheet.width - totalW) / 2) + front.width + gap + back.width / 2, y - mmToPx(5));
+
+    drawSheetFooter(ctx, sheet, 'Ganci', 3);
+    return { key: 'keychain', label: 'Ganci (4R)', paper, canvas: sheet };
+}
+
+async function renderSheets() {
+    const sheets = [];
+    if (packageHas('strip') && finalImageCanvas) sheets.push(await renderStripSheet());
+    if (packageHas('keychain')) sheets.push(await renderKeychainSheet());
+    return sheets;
+}
+
+function paintCanvas(target, source) {
+    target.width = source.width;
+    target.height = source.height;
+    target.getContext('2d').drawImage(source, 0, 0);
+}
+
+function renderSheetPreviews(container, sheets) {
+    if (!container) return;
+    container.replaceChildren(...sheets.map(sheet => {
+        const canvas = el('canvas', { 'aria-label': `Pratinjau ${sheet.label}` });
+        paintCanvas(canvas, sheet.canvas);
+        const caption = sheet.copies ? `${sheet.label} · ${sheet.copies} salinan` : sheet.label;
+        return el('figure', { class: 'print-sheet-figure' }, [canvas, el('figcaption', { text: caption })]);
+    }));
 }
 
 function scheduleSheetRender() {
@@ -450,10 +408,10 @@ function scheduleSheetRender() {
     renderDebounce = setTimeout(async () => {
         const token = ++renderToken;
         try {
-            const sheet = await renderSheet();
+            const sheets = await renderSheets();
             if (token !== renderToken) return;
-            printState.sheetCanvas = sheet;
-            paintPreview(document.getElementById('print-sheet-preview'), sheet);
+            printState.sheets = sheets;
+            renderSheetPreviews(document.getElementById('print-sheet-previews'), sheets);
         } catch (error) {
             console.error('Gagal membuat lembar cetak:', error);
         } finally {
@@ -479,10 +437,9 @@ function renderPackages() {
     Object.entries(printConfig().packages || {}).forEach(([code, pkg]) => {
         list.append(el('button', {
             type: 'button',
-            class: 'print-package-card',
+            class: `print-package-card${(pkg.items || []).length ? '' : ' print-package-card--basic'}`,
             onclick: () => choosePackage(code),
         }, [
-            el('span', { class: 'print-package-code', text: `Pilihan ${code}` }),
             el('strong', { class: 'print-package-name', text: pkg.name }),
             el('ul', { class: 'print-package-features' }, (pkg.features || []).map(text => el('li', { text }))),
             el('span', { class: 'print-package-price', text: priceFormatter.format(pkg.price) }),
@@ -498,13 +455,10 @@ function segmented(options, current, onChange) {
     }, [label])));
 }
 
-function sourcePicker(current, onChange, { allowFinal = false } = {}) {
+function sourcePicker(current, onChange) {
     const options = sessionState.poses
         .map((pose, index) => (pose ? { value: index, label: `Foto ${index + 1}`, image: pose } : null))
         .filter(Boolean);
-    if (allowFinal && finalImageCanvas) {
-        options.push({ value: 'final', label: 'Hasil Lengkap', image: finalImageCanvas.toDataURL('image/jpeg', 0.6) });
-    }
 
     return el('div', { class: 'print-source-grid' }, options.map(option => el('button', {
         type: 'button',
@@ -516,22 +470,6 @@ function sourcePicker(current, onChange, { allowFinal = false } = {}) {
     ])));
 }
 
-function textField(label, key, placeholder, target, maxlength = 80) {
-    return el('label', { class: 'print-field' }, [
-        el('span', { text: label }),
-        el('input', {
-            type: 'text',
-            value: target[key],
-            placeholder,
-            maxlength: String(maxlength),
-            oninput: event => {
-                target[key] = event.target.value;
-                scheduleSheetRender();
-            },
-        }),
-    ]);
-}
-
 function renderControls() {
     const box = document.getElementById('print-controls');
     if (!box) return;
@@ -541,45 +479,15 @@ function renderControls() {
         scheduleSheetRender();
     };
 
-    if (packageHas('photocard')) {
-        const cardTotal = currentPackage().items.filter(item => item === 'photocard').length;
-        const group = el('section', { class: 'print-group' }, [el('h3', { text: 'Photocard' })]);
-
-        if (cardTotal > 1) {
-            group.append(segmented(
-                [['different', 'Dua Pose Berbeda'], ['duplicate', 'Satu Pose Rangkap']],
-                printState.cardMode,
-                value => { printState.cardMode = value; rerender(); },
-            ));
-        }
-
-        const visibleCards = cardTotal > 1 && printState.cardMode === 'different' ? cardTotal : 1;
-        for (let i = 0; i < visibleCards; i++) {
-            group.append(el('p', { class: 'print-label', text: visibleCards > 1 ? `Kartu ${i + 1}` : 'Foto kartu' }));
-            group.append(sourcePicker(printState.cardSources[i], value => {
-                printState.cardSources[i] = value;
-                rerender();
-            }, { allowFinal: true }));
-        }
-
-        group.append(el('p', { class: 'print-label', text: 'Desain kartu' }));
-        group.append(segmented(
-            [['plain', 'Polos'], ['data', 'Dengan Data']],
-            printState.cardDesign,
-            value => { printState.cardDesign = value; rerender(); },
-        ));
-
-        if (printState.cardDesign === 'data') {
-            group.append(el('p', { class: 'print-hint', text: 'Semua isian opsional. Kosongkan yang tidak perlu.' }));
-            group.append(el('div', { class: 'print-fields' }, [
-                textField('Nama', 'name', 'Nama lengkap', printState.cardData, 40),
-                textField('NIM', 'nim', 'Nomor induk', printState.cardData, 20),
-                textField('Program Studi', 'prodi', 'Contoh: Teknik Informatika', printState.cardData, 40),
-                textField('Judul / Keterangan', 'title', 'Judul tugas akhir atau acara', printState.cardData, 110),
-                textField('Tanggal', 'date', todayLabel(), printState.cardData, 30),
-            ]));
-        }
-        box.append(group);
+    if (packageHas('strip')) {
+        const config = printConfig().strip || {};
+        box.append(el('section', { class: 'print-group' }, [
+            el('h3', { text: 'Cetak Strip' }),
+            el('p', {
+                class: 'print-hint',
+                text: `Hasil template kamu dicetak di kertas foto ${config.paper?.name || 'A4'}, diulang sebanyak yang muat, lalu dipotong mengikuti garis sudut.`,
+            }),
+        ]));
     }
 
     if (packageHas('keychain')) {
@@ -623,11 +531,16 @@ function renderControls() {
 function choosePackage(code) {
     printState.packageCode = code;
     printState.order = null;
+    printState.sheets = [];
     const lastPose = Math.max(0, poseCount() - 1);
-    printState.cardSources = [0, Math.min(1, lastPose)];
     printState.keychainFront = 0;
     printState.keychainBack = Math.min(1, lastPose);
-    if (poseCount() < 2) printState.cardMode = 'duplicate';
+
+    // Soft File saja: tidak ada yang perlu diatur, langsung bayar.
+    if (!hasPrintItems()) {
+        goToPayment();
+        return;
+    }
 
     const title = document.getElementById('print-design-title');
     if (title) title.textContent = `${currentPackage().name} — ${priceFormatter.format(currentPackage().price)}`;
@@ -658,6 +571,19 @@ async function apiRequest(url, method = 'GET', body = null) {
     return response.json();
 }
 
+/** Pesanan butuh foto yang sudah terunggah; tunggu atau ulangi unggahan bila perlu. */
+async function ensureUploaded() {
+    if (sessionState.uploadStatus === 'success' && sessionState.photoSlug) return true;
+    if (sessionState.uploadStatus === 'uploading' && sessionState.uploadPromise) {
+        await sessionState.uploadPromise;
+    }
+    if (sessionState.uploadStatus !== 'success') {
+        sessionState.uploadPromise = uploadPhotoStrip();
+        await sessionState.uploadPromise;
+    }
+    return sessionState.uploadStatus === 'success' && Boolean(sessionState.photoSlug);
+}
+
 function renderPaymentPanel() {
     const order = printState.order;
     if (!order) return;
@@ -665,7 +591,7 @@ function renderPaymentPanel() {
     const qrisStatic = order.payment_driver === 'qris_static';
 
     document.getElementById('print-invoice').textContent = order.invoice_number;
-    document.getElementById('print-package-summary').textContent = `Paket ${order.package_code} — ${order.package_name}`;
+    document.getElementById('print-package-summary').textContent = `${order.package_name} — ${(currentPackage()?.features || []).join(' · ')}`;
     document.getElementById('print-amount').textContent = priceFormatter.format(order.amount);
     document.getElementById('print-simulation-note').hidden = !simulation;
     document.getElementById('btn-simulate-payment').hidden = !simulation;
@@ -678,10 +604,18 @@ function renderPaymentPanel() {
 
 async function goToPayment() {
     const button = document.getElementById('btn-print-to-payment');
-    button.disabled = true;
-    button.textContent = 'Membuat tagihan...';
+    const packageCards = document.querySelectorAll('.print-package-card');
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Membuat tagihan...';
+    }
+    packageCards.forEach(card => { card.disabled = true; });
 
     try {
+        if (!(await ensureUploaded())) {
+            alert('Foto belum berhasil diunggah. Periksa koneksi internet lalu coba lagi.');
+            return;
+        }
         printState.order = await apiRequest(window.PHOTOBOOTH_CONFIG.printOrdersUrl, 'POST', {
             package_code: printState.packageCode,
             photo_slug: sessionState.photoSlug,
@@ -692,11 +626,14 @@ async function goToPayment() {
         // Simulasi dan QRIS statis dikonfirmasi manual; driver otomatis (DOKU) dicek berkala.
         if (!['simulation', 'qris_static'].includes(printState.order.payment_driver)) startPolling();
     } catch (error) {
-        console.error('Gagal membuat pesanan cetak:', error);
+        console.error('Gagal membuat pesanan:', error);
         alert('Gagal membuat tagihan. Periksa koneksi lalu coba lagi.');
     } finally {
-        button.disabled = false;
-        button.textContent = 'Lanjut ke Pembayaran';
+        if (button) {
+            button.disabled = false;
+            button.textContent = 'Lanjut ke Pembayaran';
+        }
+        packageCards.forEach(card => { card.disabled = false; });
     }
 }
 
@@ -719,11 +656,32 @@ function stopPolling() {
     pollTimer = null;
 }
 
+function renderDoneSheets() {
+    const container = document.getElementById('print-done-sheets');
+    if (!container) return;
+    container.hidden = printState.sheets.length === 0;
+    container.replaceChildren(...printState.sheets.map(sheet => {
+        const canvas = el('canvas', { 'aria-label': `Lembar ${sheet.label}` });
+        paintCanvas(canvas, sheet.canvas);
+        const printer = sheet.key === 'strip' ? 'Epson L120 · kertas foto A4' : 'Canon SELPHY · kertas 4R';
+        return el('article', { class: 'print-done-sheet' }, [
+            canvas,
+            el('div', { class: 'print-done-sheet-info' }, [
+                el('strong', { text: sheet.label }),
+                el('span', { text: `${printer} · skala 100%` }),
+                el('button', { type: 'button', class: 'btn-primary', onclick: () => printSheet(sheet) }, [`Cetak ${sheet.label}`]),
+                el('button', { type: 'button', class: 'btn-secondary', onclick: () => downloadSheet(sheet) }, ['Unduh']),
+            ]),
+        ]);
+    }));
+}
+
 async function onPaid() {
     stopPolling();
     // Lembar dibuat ulang agar nomor invoice tercetak di tepi kertas.
-    printState.sheetCanvas = await renderSheet();
-    paintPreview(document.getElementById('print-final-preview'), printState.sheetCanvas);
+    printState.sheets = hasPrintItems() ? await renderSheets() : [];
+    renderDoneSheets();
+    document.querySelector('[data-print-stage="done"]')?.classList.toggle('has-sheets', printState.sheets.length > 0);
     setStage('done');
 }
 
@@ -790,14 +748,13 @@ async function confirmPaymentWithPin(event) {
 
 // ── Cetak & unduh ────────────────────────────────────────────────────────────
 
-function sheetBlob() {
-    return new Promise(resolve => printState.sheetCanvas.toBlob(resolve, 'image/jpeg', 0.95));
+function sheetBlob(sheet) {
+    return new Promise(resolve => sheet.canvas.toBlob(resolve, 'image/jpeg', 0.95));
 }
 
-async function printSheet() {
-    if (!printState.sheetCanvas) return;
-    const paper = printConfig().paper || { width_mm: 100, height_mm: 148 };
-    const url = URL.createObjectURL(await sheetBlob());
+async function printSheet(sheet) {
+    const { paper } = sheet;
+    const url = URL.createObjectURL(await sheetBlob(sheet));
     const frame = el('iframe', { class: 'print-frame', title: 'Lembar cetak' });
     document.body.append(frame);
 
@@ -822,10 +779,10 @@ async function printSheet() {
     img.src = url;
 }
 
-async function downloadSheet() {
-    if (!printState.sheetCanvas) return;
-    const url = URL.createObjectURL(await sheetBlob());
-    const link = el('a', { href: url, download: `momenta-${printState.order?.invoice_number || 'lembar'}-4R.jpg` });
+async function downloadSheet(sheet) {
+    const url = URL.createObjectURL(await sheetBlob(sheet));
+    const name = `momenta-${printState.order?.invoice_number || 'lembar'}-${sheet.key}.jpg`;
+    const link = el('a', { href: url, download: name });
     document.body.append(link);
     link.click();
     link.remove();
@@ -834,14 +791,14 @@ async function downloadSheet() {
 
 // ── Entry point ──────────────────────────────────────────────────────────────
 
-export function openPrintFlow(options = {}) {
-    onExit = options.onExit || (() => {});
+export function openPaymentFlow() {
     stopPolling();
     poseCache.clear();
     focusCache.clear();
     printState.order = null;
-    printState.sheetCanvas = null;
+    printState.sheets = [];
 
+    // Hasil template lengkap (dengan stiker/coretan) untuk lembar strip.
     const finalCanvas = document.getElementById('final-canvas');
     finalImageCanvas = null;
     if (finalCanvas?.width) {
@@ -857,17 +814,17 @@ export function openPrintFlow(options = {}) {
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-print-exit')?.addEventListener('click', () => {
+        // Foto tetap tersimpan di server, tapi QR tidak ditampilkan.
+        if (!window.confirm('Selesai tanpa membeli? QR soft file tidak akan ditampilkan.')) return;
         stopPolling();
-        onExit();
+        window.location.assign(window.PHOTOBOOTH_CONFIG?.homeUrl || '/photobooth');
     });
     document.getElementById('btn-print-back-package')?.addEventListener('click', () => setStage('package'));
     document.getElementById('btn-print-to-payment')?.addEventListener('click', goToPayment);
     document.getElementById('btn-payment-back')?.addEventListener('click', () => {
         stopPolling();
-        setStage('design');
+        setStage(hasPrintItems() ? 'design' : 'package');
     });
     document.getElementById('btn-simulate-payment')?.addEventListener('click', simulatePayment);
     document.getElementById('print-pin-form')?.addEventListener('submit', confirmPaymentWithPin);
-    document.getElementById('btn-print-sheet')?.addEventListener('click', printSheet);
-    document.getElementById('btn-download-sheet')?.addEventListener('click', downloadSheet);
 });

@@ -538,7 +538,7 @@ export async function composePhotoStrip(poses, bgStyle) {
 
 /**
  * Satu pose dengan background pengganti dan filter yang sama seperti di hasil
- * strip, dalam ukuran asli kamera. Dipakai untuk photocard dan ganci.
+ * strip, dalam ukuran asli kamera. Dipakai untuk ganci.
  */
 export async function renderProcessedPose(index) {
     const source = sessionState.poses[index];
@@ -741,7 +741,7 @@ function wrapTextLines(ctx, text, maxWidth) {
 
 
 function resolvePhotoFilter(filterId, explicitCss, size = 1000) {
-    // Besar blur mengikuti ukuran foto agar hasil strip, photocard, dan ganci sama halusnya.
+    // Besar blur mengikuti ukuran foto agar hasil strip dan ganci sama halusnya.
     if (filterId === "blur") return `blur(${Math.max(2, size * 0.02).toFixed(1)}px)`;
     if (explicitCss && explicitCss !== "none") return explicitCss;
 

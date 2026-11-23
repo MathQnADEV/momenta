@@ -14,6 +14,7 @@ class PublicPhotoController extends Controller
     public function show(string $slug)
     {
         $photo = Photo::active()
+            ->paid()
             ->where('slug', $slug)
             ->firstOrFail();
 
@@ -29,6 +30,7 @@ class PublicPhotoController extends Controller
     public function download(string $slug)
     {
         $photo = Photo::active()
+            ->paid()
             ->where('slug', $slug)
             ->firstOrFail();
 

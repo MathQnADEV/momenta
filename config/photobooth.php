@@ -818,27 +818,51 @@ return [
     */
     'print' => [
         'dpi' => 300,
-        'paper' => ['name' => '4R', 'width_mm' => 100, 'height_mm' => 148],
-        'photocard' => ['width_mm' => 54, 'height_mm' => 86],
-        'keychain' => ['width_mm' => 28, 'height_mm' => 40],
+
+        // Strip = hasil template pelanggan, diulang sebanyak yang muat di kertas foto A4.
+        // Dicetak di printer A4 (Epson L120). L120 tidak bisa tanpa margin, jadi ada tepi putih.
+        'strip' => [
+            'paper' => ['name' => 'A4', 'width_mm' => 210, 'height_mm' => 297],
+            'margin_mm' => 5,
+            'gap_mm' => 4,
+            // Panjang sisi terpanjang tiap template di kertas (150 mm ≈ photostrip 2×6 inci).
+            'long_side_mm' => (float) env('PHOTOBOOTH_STRIP_LONG_SIDE_MM', 150),
+        ],
+
+        // Ganci akrilik 2 sisi, dicetak di Canon SELPHY (kertas 4R).
+        // Ukuran akrilik belum pasti: ubah lewat .env bila sudah diketahui.
+        'keychain' => [
+            'paper' => ['name' => '4R', 'width_mm' => 100, 'height_mm' => 148],
+            'width_mm' => (float) env('PHOTOBOOTH_KEYCHAIN_WIDTH_MM', 28),
+            'height_mm' => (float) env('PHOTOBOOTH_KEYCHAIN_HEIGHT_MM', 40),
+        ],
+
+        // Semua pilihan sudah termasuk sesi foto dan soft file (QR).
+        // QR soft file baru muncul setelah pembayaran lunas.
         'packages' => [
+            'S' => [
+                'name' => 'Soft File',
+                'price' => 8000,
+                'items' => [],
+                'features' => ['Foto + soft file (QR untuk unduh)'],
+            ],
             'A' => [
-                'name' => 'Hanya Kartu Foto',
-                'price' => 10000,
-                'items' => ['photocard', 'photocard'],
-                'features' => ['2 lembar photocard mini', '2 pose berbeda atau 1 pose rangkap', 'Termasuk soft file QR'],
+                'name' => 'Paket A',
+                'price' => 13000,
+                'items' => ['strip'],
+                'features' => ['Foto + soft file', 'Cetak strip (kertas foto A4)'],
             ],
             'B' => [
-                'name' => 'Paket Bundel Hemat',
-                'price' => 20000,
-                'items' => ['photocard', 'keychain'],
-                'features' => ['1 lembar photocard momen', '1 gantungan kunci akrilik 2 sisi', 'Termasuk soft file QR'],
-            ],
-            'C' => [
-                'name' => 'Hanya Gantungan Kunci Akrilik',
+                'name' => 'Paket B',
                 'price' => 15000,
                 'items' => ['keychain'],
-                'features' => ['1 gantungan kunci akrilik 2 sisi', 'Termasuk soft file QR'],
+                'features' => ['Foto + soft file', 'Gantungan kunci akrilik 2 sisi'],
+            ],
+            'C' => [
+                'name' => 'Paket C',
+                'price' => 20000,
+                'items' => ['strip', 'keychain'],
+                'features' => ['Foto + soft file', 'Cetak strip (kertas foto A4)', 'Gantungan kunci akrilik 2 sisi'],
             ],
         ],
     ],
