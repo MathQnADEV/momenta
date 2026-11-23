@@ -819,16 +819,39 @@ return [
     'print' => [
         'dpi' => 300,
 
-        // Strip = satu salinan hasil frame pelanggan di kertas foto A4 (Epson L120),
-        // tegak dan mengikuti bentuk frame. L120 tidak bisa tanpa margin, jadi ada tepi putih.
+        // Strip / photo card = satu hasil frame pelanggan di kertas foto A4 (Epson L120).
+        // Kertas dipakai berkali-kali: tiap cetakan menempati satu bagian kertas, dan
+        // aplikasi mengingat bagian yang sudah terpakai (bisa dipindah operator).
+        // L120 tidak bisa tanpa margin, jadi ada tepi 5 mm yang tidak dipakai.
         'strip' => [
             'paper' => ['name' => 'A4', 'width_mm' => 210, 'height_mm' => 297],
             'margin_mm' => 5,
-            // 0 = sebesar mungkin di A4. Isi angka (mm) untuk panjang sisi terpanjang yang tetap.
-            'long_side_mm' => (float) env('PHOTOBOOTH_STRIP_LONG_SIDE_MM', 0),
+            // Jarak antar cetakan agar garis potong tidak menimpa cetakan lain.
+            'gap_mm' => 6,
         ],
 
-        // Ganci akrilik 2 sisi, dicetak di Canon SELPHY (kertas 4R).
+        // Ukuran cetak per layout, kunci "baris x kolom" (Grid 2x3 = 2 baris × 3 kolom,
+        // Template Hijau = 4 baris × 2 kolom). Nilai [panjang, pendek] dalam mm;
+        // arah tegak/melebar mengikuti bentuk frame. Frame dimuat utuh, sisa jadi tepi putih.
+        'item_sizes' => [
+            '1x1' => ['size' => [100, 100], 'type' => 'Photo card'],
+            '1x2' => ['size' => [100, 50], 'type' => 'Photostrip'],
+            '2x1' => ['size' => [100, 50], 'type' => 'Photo card'],
+            '3x1' => ['size' => [100, 40], 'type' => 'Photo card'],
+            '1x3' => ['size' => [100, 50], 'type' => 'Photostrip'],
+            '4x1' => ['size' => [100, 35], 'type' => 'Photo card'],
+            '1x4' => ['size' => [150, 50], 'type' => 'Photostrip'],
+            '2x2' => ['size' => [100, 100], 'type' => 'Photo card'],
+            '2x3' => ['size' => [100, 50], 'type' => 'Photostrip'],
+            '3x3' => ['size' => [100, 100], 'type' => 'Photo card'],
+            '4x2' => ['size' => [100, 50], 'type' => 'Photostrip'],
+            '3x2' => ['size' => [100, 100], 'type' => 'Photo card'],
+        ],
+        // Layout yang tidak ada di tabel memakai ukuran ini.
+        'item_size_default' => ['size' => [100, 100], 'type' => 'Photo card'],
+
+        // Ganci akrilik 2 sisi, dicetak di Canon SELPHY (kertas 4R). Kertas dibagi dua
+        // (atas–bawah) sehingga satu lembar bisa dipakai untuk dua pesanan ganci.
         // Isi ganci mengikuti bentuk frame dan dimuatkan ke kotak lebar × tinggi ini.
         // Ukuran akrilik belum pasti: ubah lewat .env bila sudah diketahui.
         'keychain' => [
@@ -850,7 +873,7 @@ return [
                 'name' => 'Paket A',
                 'price' => 13000,
                 'items' => ['strip'],
-                'features' => ['Foto + soft file', 'Cetak strip (kertas foto A4)'],
+                'features' => ['Foto + soft file', 'Cetak foto (strip / photo card)'],
             ],
             'B' => [
                 'name' => 'Paket B',
@@ -862,7 +885,7 @@ return [
                 'name' => 'Paket C',
                 'price' => 20000,
                 'items' => ['strip', 'keychain'],
-                'features' => ['Foto + soft file', 'Cetak strip (kertas foto A4)', 'Gantungan kunci akrilik 2 sisi'],
+                'features' => ['Foto + soft file', 'Cetak foto (strip / photo card)', 'Gantungan kunci akrilik 2 sisi'],
             ],
         ],
     ],

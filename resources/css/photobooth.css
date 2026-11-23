@@ -5678,6 +5678,89 @@ html.kiosk-landscape .print-preview .print-sheet-figure canvas {
     font-size: 19px;
 }
 
+/* Kertas dipakai berkali-kali: ketuk pratinjau untuk memindah posisi cetak. */
+.print-sheet-figure canvas.is-interactive {
+    cursor: crosshair;
+    touch-action: manipulation;
+}
+
+.print-sheet-figure figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.print-sheet-figure figcaption strong {
+    color: var(--primary);
+    font-size: 18px;
+}
+
+.print-sheet-status {
+    color: var(--text-muted);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.print-sheet-figure.is-full .print-sheet-status {
+    color: #b42318;
+}
+
+.print-sheet-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.print-sheet-printer {
+    flex-basis: 100%;
+    color: var(--text-muted);
+    font-size: 15px;
+    text-align: center;
+}
+
+.print-sheet-actions .btn-primary,
+.print-sheet-actions .btn-secondary {
+    flex: 1 1 0;
+    min-height: 58px;
+    padding: 10px 16px;
+    font-size: 19px;
+}
+
+.print-sheet-actions .btn-primary:disabled {
+    opacity: 0.45;
+}
+
+.print-new-paper {
+    min-height: 50px;
+    padding: 8px 20px;
+    border: 2px dashed rgba(43, 39, 37, 0.25);
+    border-radius: 14px;
+    background: transparent;
+    color: var(--primary);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.print-done-sheets .print-sheet-figure {
+    padding: 16px;
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 0 12px 30px rgba(43, 39, 37, 0.1);
+}
+
+.print-done-sheets .print-sheet-figure canvas {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 18px rgba(43, 39, 37, 0.16));
+}
+
 /* Paket tanpa cetakan: QR saja di tengah. */
 .print-panel[data-print-stage="done"]:not(.has-sheets) .print-done-qr {
     flex: 1;
